@@ -1,0 +1,17 @@
+[
+    { "REQ_PATH": "GETLIBDATA", "REQ_TEXT": "Fetching library data..." },
+    { "REQ_PATH": "INIT_PRC", "REQ_TEXT": "Initializing application data..." },
+    { "REQ_PATH": "GETAPPDATA", "REQ_TEXT": "Loading application details..." },
+    { "REQ_PATH": "GETMIMETREE", "REQ_TEXT": "Retrieving MIME data..." },
+    { "REQ_PATH": "UNLOCK_APP", "REQ_TEXT": "Unlocking application..." },
+    { "REQ_PATH": "APP_COPY", "REQ_TEXT": "Copying application..." },
+    { "REQ_PATH": "SAVE_ACTIVE_APPDATA#SAVE", "REQ_TEXT": "Saving application..." },
+    { "REQ_PATH": "SAVE_ACTIVE_APPDATA#ACTIVE", "REQ_TEXT": "Activating application..." },
+    { "REQ_PATH": "CHK_WS_SYNTX", "REQ_TEXT": "Checking application syntax..." },
+    { "REQ_PATH": "APP_DELTE", "REQ_TEXT": "Deleting application..." },
+    { "REQ_PATH": "CREATEAPPDATA", "REQ_TEXT": "Creating application..." },
+    { "REQ_PATH": "USP_INIT_PRC", "REQ_TEXT": "Initializing USP data..." },
+    { "REQ_PATH": "USP_GET_OBJECT_LINE_DATA", "REQ_TEXT": "Loading USP application details..." },
+    { "REQ_PATH": "USP_SAVE_ACTIVE_APPDATA#SAVE", "REQ_TEXT": "Saving USP application..." },
+    { "REQ_PATH": "USP_SAVE_ACTIVE_APPDATA#ACTIVE", "REQ_TEXT": "Activating USP application..." }
+]

@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>이미지 압축 가이드</title>
+  <style>
+    /* ===== CSS Variables – Dark (default) ===== */
+    :root {
+      --bg: #0b1220;
+      --card: #0f1b2f;
+      --text: #e7eefc;
+      --muted: #a9b8d6;
+      --line: #243553;
+      --accent: #4aa3ff;
+      --note-bg: rgba(74,163,255,.08);
+      --shadow: rgba(0,0,0,.28);
+      --switch-off: rgba(169,184,214,.25);
+      --switch-on: #4aa3ff;
+      --badge-bg: rgba(74,163,255,.12);
+      --badge-border: rgba(74,163,255,.3);
+      --badge-text: #4aa3ff;
+      --format-bg: #0f1b2f;
+      --size-before: #ff8c42;
+      --size-after: #00e5a0;
+      --step-num-bg: rgba(74,163,255,.12);
+      --step-num-border: rgba(74,163,255,.25);
+      --code-bg: rgba(74,163,255,.1);
+      --flow-blue-bg: rgba(74,163,255,.15);
+      --flow-blue-border: rgba(74,163,255,.25);
+      --flow-green-bg: rgba(0,229,160,.12);
+      --flow-green-border: rgba(0,229,160,.2);
+      --flow-orange-bg: rgba(255,140,66,.12);
+      --flow-orange-border: rgba(255,140,66,.2);
+      --info-blue-bg: rgba(74,163,255,.06);
+      --info-blue-border: rgba(74,163,255,.18);
+      --info-warn-bg: rgba(255,140,66,.06);
+      --info-warn-border: rgba(255,140,66,.18);
+      --info-success-bg: rgba(0,229,160,.06);
+      --info-success-border: rgba(0,229,160,.18);
+      --reduction-bg: rgba(0,229,160,.1);
+      --reduction-border: rgba(0,229,160,.2);
+      --reduction-text: #00e5a0;
+      --section-title-color: #00e5a0;
+      --header-gradient: linear-gradient(135deg, #0d1525 0%, #0d1a2e 40%, #101520 100%);
+      --sticky-bg: rgba(11,18,32,.96);
+      --surface2: #1c2030;
+      --theme-btn-bg: rgba(169,184,214,.1);
+      --theme-btn-border: rgba(169,184,214,.2);
+      --theme-btn-hover: rgba(169,184,214,.15);
+      --footer-bg: #060d1a;
+      --footer-border: #4aa3ff;
+      --footer-border-shadow: rgba(74,163,255,.18);
+    }
+
+    /* ===== Light Mode ===== */
+    body.light-mode {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --text: #101828;
+      --muted: #475467;
+      --line: #e5e7eb;
+      --accent: #2563eb;
+      --note-bg: rgba(37,99,235,.08);
+      --shadow: rgba(16,24,40,.12);
+      --switch-off: rgba(71,84,103,.25);
+      --switch-on: #2563eb;
+      --badge-bg: rgba(37,99,235,.08);
+      --badge-border: rgba(37,99,235,.25);
+      --badge-text: #2563eb;
+      --format-bg: #f9fafb;
+      --size-before: #dc6803;
+      --size-after: #059669;
+      --step-num-bg: rgba(37,99,235,.08);
+      --step-num-border: rgba(37,99,235,.2);
+      --code-bg: rgba(37,99,235,.08);
+      --flow-blue-bg: rgba(37,99,235,.08);
+      --flow-blue-border: rgba(37,99,235,.2);
+      --flow-green-bg: rgba(5,150,105,.08);
+      --flow-green-border: rgba(5,150,105,.2);
+      --flow-orange-bg: rgba(220,104,3,.08);
+      --flow-orange-border: rgba(220,104,3,.2);
+      --info-blue-bg: rgba(37,99,235,.05);
+      --info-blue-border: rgba(37,99,235,.15);
+      --info-warn-bg: rgba(220,104,3,.05);
+      --info-warn-border: rgba(220,104,3,.15);
+      --info-success-bg: rgba(5,150,105,.05);
+      --info-success-border: rgba(5,150,105,.15);
+      --reduction-bg: rgba(5,150,105,.08);
+      --reduction-border: rgba(5,150,105,.2);
+      --reduction-text: #059669;
+      --section-title-color: #059669;
+      --header-gradient: linear-gradient(135deg, #dbeafe 0%, #eff6ff 40%, #f0f9ff 100%);
+      --sticky-bg: rgba(246,247,251,.96);
+      --surface2: #f3f4f6;
+      --theme-btn-bg: rgba(71,84,103,.08);
+      --theme-btn-border: rgba(71,84,103,.15);
+      --theme-btn-hover: rgba(71,84,103,.12);
+      --footer-bg: #eef1f8;
+      --footer-border: #2563eb;
+      --footer-border-shadow: rgba(37,99,235,.15);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: system-ui, 'Segoe UI', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      /* footer 높이만큼 padding — JS로 동적 조정 */
+      padding-bottom: 200px;
+      line-height: 1.6;
+      transition: background .2s, color .2s;
+    }
+
+    ::-webkit-scrollbar { width: 18px; height: 18px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: #647891; border: 3px solid var(--bg); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(169,184,214,.55); }
+    ::-webkit-scrollbar-corner { background: var(--bg); }
+
+    /* ===== Header ===== */
+    header {
+      background: var(--header-gradient);
+      border-bottom: 1px solid var(--line);
+      padding: 24px 18px 18px;
+      position: relative; overflow: hidden;
+    }
+    header::before {
+      content: '';
+      position: absolute; top: -60px; right: -60px;
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, rgba(74,163,255,.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .header-row {
+      max-width: 980px; margin: 0 auto;
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap;
+    }
+    .header-left { flex: 1; min-width: 0; }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--badge-bg); border: 1px solid var(--badge-border); color: var(--badge-text);
+      font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+      padding: 4px 12px; border-radius: 100px; margin-bottom: 10px;
+    }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    header h1 { margin: 0 0 6px; font-size: 20px; }
+    header h1 span { color: var(--accent); }
+    .sub { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+    .theme-btn {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--theme-btn-bg); border: 1px solid var(--theme-btn-border);
+      border-radius: 8px; padding: 7px 13px;
+      cursor: pointer; font-size: 12px; font-weight: 600; color: var(--muted);
+      transition: background .18s, color .18s; flex-shrink: 0; white-space: nowrap;
+    }
+    .theme-btn:hover { background: var(--theme-btn-hover); color: var(--text); }
+
+    /* ===== Main ===== */
+    main { max-width: 980px; margin: 0 auto; padding: 12px 18px 0; }
+
+    /* ===== Card ===== */
+    .card {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 14px; padding: 16px;
+      box-shadow: 0 10px 26px var(--shadow); margin-bottom: 14px;
+    }
+    h2 { margin: 0 0 10px; font-size: 15px; }
+    p, li { font-size: 13px; line-height: 1.7; }
+
+    /* ===== Note ===== */
+    .note {
+      border-left: 4px solid var(--accent); background: var(--note-bg);
+      border-radius: 10px; padding: 10px 12px; margin-top: 10px; font-size: 13px;
+    }
+
+    /* ===== Section ===== */
+    .section { padding: 24px 0 0; }
+    .section-title {
+      font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--section-title-color); margin-bottom: 12px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .section-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--line), transparent); }
+
+    /* ===== Info Box ===== */
+    .info-box {
+      display: flex; gap: 10px; align-items: flex-start;
+      background: var(--info-blue-bg); border: 1px solid var(--info-blue-border);
+      border-radius: 8px; padding: 10px 12px; margin-bottom: 8px;
+    }
+    .info-box.warn    { background: var(--info-warn-bg);    border-color: var(--info-warn-border); }
+    .info-box.success { background: var(--info-success-bg); border-color: var(--info-success-border); }
+    .info-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+    .info-text { font-size: 13px; color: var(--muted); line-height: 1.65; }
+    .info-text strong { color: var(--text); font-weight: 600; }
+
+    /* ===== Flow ===== */
+    .flow {
+      display: flex; align-items: center; flex-wrap: wrap;
+      background: var(--surface2); border: 1px solid var(--line);
+      border-radius: 14px; padding: 16px 20px; margin-bottom: 12px; gap: 0;
+    }
+    .flow-step { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 110px; }
+    .flow-icon {
+      width: 36px; height: 36px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
+    }
+    .flow-icon.blue   { background: var(--flow-blue-bg);   border: 1px solid var(--flow-blue-border); }
+    .flow-icon.green  { background: var(--flow-green-bg);  border: 1px solid var(--flow-green-border); }
+    .flow-icon.orange { background: var(--flow-orange-bg); border: 1px solid var(--flow-orange-border); }
+    .flow-label { font-size: 13px; font-weight: 500; }
+    .flow-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .flow-arrow { color: var(--muted); font-size: 15px; padding: 0 10px; flex-shrink: 0; }
+
+    /* ===== Format Tags ===== */
+    .format-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .format-tag {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--format-bg); border: 1px solid var(--line); border-radius: 8px; padding: 9px 13px;
+    }
+    .format-tag-name { font-family: monospace; font-size: 13px; font-weight: 600; color: var(--accent); }
+    .format-tag-desc { font-size: 12px; color: var(--muted); }
+
+    /* ===== Image Placeholder ===== */
+    .img-placeholder {
+      background: var(--surface2); border: 2px dashed var(--line); border-radius: 14px;
+      min-height: 190px; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 8px;
+      margin: 12px 0; cursor: default;
+    }
+    .img-placeholder-icon { font-size: 30px; opacity: .4; }
+    .img-placeholder-badge {
+      background: var(--badge-bg); border: 1px solid var(--badge-border); color: var(--badge-text);
+      font-size: 11px; font-weight: 600; letter-spacing: .05em; padding: 3px 10px; border-radius: 100px;
+    }
+    .img-placeholder-title { font-size: 13px; font-weight: 600; color: var(--muted); }
+    .img-placeholder-desc  { font-size: 12px; color: var(--muted); opacity: .7; text-align: center; max-width: 300px; line-height: 1.5; }
+
+    /* ===== Size Compare ===== */
+    .size-compare {
+      display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center;
+      background: var(--surface2); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-top: 10px;
+    }
+    .size-item { text-align: center; }
+    .size-label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 5px; }
+    .size-value { font-family: monospace; font-size: 22px; font-weight: 600; }
+    .size-value.before { color: var(--size-before); }
+    .size-value.after  { color: var(--size-after); }
+    .size-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .size-arrow-col { font-size: 18px; color: var(--muted); text-align: center; }
+    .size-reduction {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--reduction-bg); border: 1px solid var(--reduction-border); color: var(--reduction-text);
+      font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 100px;
+    }
+
+    /* ===== Steps ===== */
+    .steps { display: flex; flex-direction: column; }
+    .step { display: flex; gap: 13px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+    .step:last-child { border-bottom: none; padding-bottom: 0; }
+    .step-num {
+      width: 26px; height: 26px; flex-shrink: 0; border-radius: 50%;
+      background: var(--step-num-bg); border: 1px solid var(--step-num-border);
+      color: var(--accent); font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; margin-top: 1px;
+    }
+    .step-content h4 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .step-content p  { font-size: 13px; color: var(--muted); }
+
+    .divider { height: 1px; background: var(--line); margin: 28px 0 0; }
+
+    /* ===== Sticky Footer Panel ===== */
+    .footer-bar {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+      background: var(--footer-bg);
+      border-top: 2px solid var(--footer-border);
+      box-shadow: 0 -4px 24px var(--footer-border-shadow);
+      backdrop-filter: blur(6px);
+      transition: background .2s, border-color .2s, box-shadow .2s;
+    }
+
+    /* 토글 헤더 */
+    .panel-toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      max-width: 980px; margin: 0 auto; padding: 10px 18px;
+      cursor: pointer; user-select: none;
+      border-bottom: 1px solid transparent; transition: border-color .18s;
+    }
+    .footer-bar:not(.collapsed) .panel-toggle-row { border-bottom-color: var(--line); }
+    .panel-toggle-left { display: flex; align-items: center; gap: 10px; }
+    .panel-toggle-title { font-size: 13px; font-weight: 700; }
+    .panel-status {
+      font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 100px; transition: all .18s;
+    }
+    .panel-status.on  { background: var(--info-success-bg); color: var(--reduction-text); border: 1px solid var(--reduction-border); }
+    .panel-status.off { background: var(--theme-btn-bg);    color: var(--muted);           border: 1px solid var(--line); }
+    .panel-chevron {
+      width: 22px; height: 22px; border-radius: 6px;
+      background: var(--surface2); border: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted); font-size: 10px; transition: transform .3s;
+    }
+    .footer-bar.collapsed .panel-chevron { transform: rotate(180deg); }
+
+    /* 패널 바디 */
+    .panel-body { padding: 14px 18px 18px; overflow: hidden; }
+    .footer-bar.collapsed .panel-body { display: none; }
+
+    .panel-inner {
+      max-width: 980px; margin: 0 auto;
+    }
+
+    /* ===== 옵션 그룹 섹션 타이틀 ===== */
+    .option-section-title {
+      font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 10px; padding-bottom: 6px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    /* ===== 옵션 그리드 — 확장 가능한 카드 레이아웃 ===== */
+    /* 옵션 행: 여러 그룹을 가로로 나열 */
+    .option-row {
+      display: flex; flex-wrap: wrap; gap: 12px;
+      margin-bottom: 12px;
+    }
+    .option-row:last-child { margin-bottom: 0; }
+
+    /* 각 옵션 카드 */
+    .option-card {
+      background: var(--surface2); border: 1px solid var(--line);
+      border-radius: 10px; padding: 12px 14px;
+      display: flex; flex-direction: column; gap: 6px;
+      flex: 1; min-width: 200px; max-width: 320px;
+    }
+    .option-card.disabled { opacity: .45; pointer-events: none; }
+
+    .field-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+    .field-desc  { font-size: 11px; color: var(--muted); opacity: .8; line-height: 1.5; margin-top: 2px; }
+
+    /* ===== Switch ===== */
+    .switch { position: relative; width: 64px; height: 28px; }
+    .switch input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .switch-track { position: absolute; inset: 0; border-radius: 999px; background: var(--switch-off); transition: .18s; }
+    .switch-handle {
+      position: absolute; top: 2px; left: 2px; width: 24px; height: 24px;
+      border-radius: 50%; background: #fff; box-shadow: 0 6px 18px var(--shadow); transition: .18s;
+    }
+    .switch-label {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      font-size: 11px; font-weight: 700; color: #fff; pointer-events: none;
+    }
+    .switch-label.on  { left: 10px;  opacity: 0; }
+    .switch-label.off { right: 9px; opacity: 1; }
+    .switch input:checked + .switch-track  { background: var(--switch-on); }
+    .switch input:checked ~ .switch-handle { transform: translateX(36px); }
+    .switch input:checked + .switch-track .on  { opacity: 1; }
+    .switch input:checked + .switch-track .off { opacity: 0; }
+    .switch input:disabled + .switch-track     { background: rgba(169,184,214,.15); }
+    .switch input:disabled ~ .switch-handle    { opacity: .4; }
+
+    .toggle-row   { display: flex; align-items: center; gap: 10px; }
+    .toggle-label { font-size: 13px; font-weight: 500; }
+
+    /* ===== Quality Input ===== */
+    .quality-input-wrap { display: flex; align-items: center; gap: 8px; }
+    .quality-input {
+      width: 72px; background: var(--card); border: 1px solid var(--line);
+      border-radius: 7px; color: var(--text);
+      font-family: monospace; font-size: 14px; font-weight: 600;
+      padding: 6px 8px; text-align: center; outline: none;
+      transition: border-color .18s, box-shadow .18s;
+      -moz-appearance: textfield;
+    }
+    .quality-input::-webkit-inner-spin-button,
+    .quality-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .quality-input:focus   { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(74,163,255,.15); }
+    .quality-input:disabled { opacity: .5; cursor: not-allowed; }
+
+    .quality-slider {
+      flex: 1; -webkit-appearance: none; appearance: none;
+      height: 4px; border-radius: 100px; background: var(--line); outline: none; cursor: pointer;
+    }
+    .quality-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%;
+      background: var(--accent); border: 2px solid var(--bg);
+      box-shadow: 0 0 0 2px rgba(74,163,255,.25); cursor: pointer; transition: transform .15s;
+    }
+    .quality-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+    .quality-slider:disabled { opacity: .5; cursor: not-allowed; }
+
+    .quality-hint { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); opacity: .7; }
+
+    /* ===== 준비 중 배지 (향후 추가 옵션) ===== */
+    .coming-soon-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--theme-btn-bg); border: 1px solid var(--line);
+      color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: .05em;
+      padding: 2px 8px; border-radius: 100px;
+    }
+  </style>
+
+  <script>
+    const oAPP = {
+      attr: { theme: '', parentId: '' },
+      IF_DATA: {}
+    };
+
+    //image compress 설정값 구조.
+    const TY_SETTINGS = {
+      enabled : false,
+      initialQuality : 0.5
+    };
+
+    window.toggleTheme = function(mode) {
+      if (mode === 'light') {
+        document.body.classList.add('light-mode');
+      } else if (mode === 'dark') {
+        document.body.classList.remove('light-mode');
+      } else {
+        document.body.classList.toggle('light-mode');
+      }
+      _syncThemeBtn();
+      return document.body.classList.contains('light-mode') ? 'light' : 'dark';
+    };
+
+    window.getCurrentTheme = function() {
+      return document.body.classList.contains('light-mode') ? 'light' : 'dark';
+    };
+
+    function _syncThemeBtn() {
+      const icon  = document.getElementById('themeBtnIcon');
+      const label = document.getElementById('themeBtnLabel');
+      if (!icon) return;
+      const isLight = document.body.classList.contains('light-mode');
+      icon.textContent  = isLight ? '🌙' : '☀️';
+      label.textContent = isLight ? '다크 모드' : '라이트 모드';
+    }
+
+    window.addEventListener('init', (e) => {
+      oAPP.IF_DATA       = e.detail.IF_DATA;
+      oAPP.attr.theme    = e.detail.theme;
+      oAPP.attr.parentId = e.detail.parentId;
+
+      debugger;
+      applyLang(e.detail.htmlLan);
+      
+      //초기 테마 설정 처리.
+      toggleTheme(oAPP.attr.theme);
+
+      const compressSwitch = document.getElementById('compressSwitch');
+
+      const qualitySlider = document.getElementById('qualitySlider');
+
+      const qualityInput = document.getElementById('qualityInput');
+
+      //이전 선택값에 따른 스위치 활성 여부 설정.
+      compressSwitch.checked  = oAPP.IF_DATA.UIATV === 'X';
+
+      let _sSettings = {...TY_SETTINGS};
+
+      if(oAPP.IF_DATA.UIATV !== ""){
+
+        try {
+
+          _sSettings = JSON.parse(oAPP.IF_DATA.UIATV);
+
+        } catch (error) {
+          
+        }
+
+      }
+
+      //이미지 comperss 설정값.
+      compressSwitch.checked = _sSettings?.enabled;
+
+      //이미지 comperss 품질.
+      qualitySlider.value =_sSettings?.initialQuality;
+
+      //이미지 comperss 품질.
+      qualityInput.value =_sSettings?.initialQuality;
+
+      //편집 모드에 따른 스위치 활성/비활성 처리.
+      compressSwitch.disabled = oAPP.IF_DATA.edit !== true;
+      
+      //설정값 입력필드 활성/비활성 처리.
+      _syncCompressUI();
+
+    });
+
+
+    //설정값 변경 처리 function.
+    function changeSettings() {
+
+      _syncCompressUI();
+
+      const _qualitySlider = document.getElementById("qualitySlider");
+
+      //default 값 초기화.
+      oAPP.IF_DATA.UIATV =  "";
+
+      //활성화 처리시 입력한 
+      if(document.getElementById('compressSwitch').checked){
+        oAPP.IF_DATA.UIATV = JSON.stringify({enabled:true, initialQuality:Number(_qualitySlider.value)});
+      }
+
+      const _parentDom = parent.document.getElementById(oAPP.attr.parentId);
+      if (!_parentDom) return;
+      _parentDom.dispatchEvent(new CustomEvent('OK', { detail: { IF_DATA: oAPP.IF_DATA } }));
+    }
+
+
+    //설정값 입력필드 활성/비활성 처리.
+    function _syncCompressUI() {
+      const on     = document.getElementById('compressSwitch').checked;
+      const label  = document.getElementById('compressLabel');
+      const badge  = document.getElementById('panelStatusBadge');
+      const qCard  = document.getElementById('qualityCard');
+
+      label.textContent = on ? '활성화' : '비활성화';
+      badge.textContent = on ? 'ON' : 'OFF';
+      badge.className   = 'panel-status ' + (on ? 'on' : 'off');
+
+      // 품질 카드 활성/비활성
+      if (qCard) qCard.classList.toggle('disabled', !on);
+      document.getElementById('qualityInput').disabled  = !on;
+      document.getElementById('qualitySlider').disabled = !on;
+    }
+
+    /* footer 높이에 맞춰 body padding 동적 조정 */
+    function adjustBodyPadding() {
+      const footer = document.getElementById('footerPanel');
+      if (footer) {
+        document.body.style.paddingBottom = footer.offsetHeight + 16 + 'px';
+      }
+    }
+
+
+
+    /**
+     * applyLang — lang JSON을 받아 DOM의 텍스트를 치환하는 함수
+     *
+     * @param {Object} lang - 언어 데이터 객체
+     *
+     * ─ lang 값 유형 ────────────────────────────────────────────
+     *  "id" : "text"              → el.textContent 치환
+     *  "id" : { html: "..." }    → el.innerHTML   치환 (태그 포함 시)
+     *
+     * ─ 특수 키 (id 매칭 없이 별도 처리) ───────────────────────
+     *  "compressLabel-on"  → #compressLabel 의 data-on  속성 갱신
+     *  "compressLabel-off" → #compressLabel 의 data-off 속성 갱신
+     *    ※ _syncCompressUI() 가 data-on/off 를 읽어 텍스트 반영
+     * ────────────────────────────────────────────────────────────
+     */
+    function applyLang(lang) {
+      if (!lang || typeof lang !== 'object') return;
+
+      // 특수 키 prefix — id 매칭 대신 별도 로직이 필요한 키
+      const SPECIAL_PREFIX = 'compressLabel-';
+
+      Object.entries(lang).forEach(([id, value]) => {
+
+        /* ── 특수 키 처리 ─────────────────────────────── */
+        if (id.startsWith(SPECIAL_PREFIX)) {
+          const el = document.getElementById('compressLabel');
+          if (!el) return;
+
+          const state = id.replace(SPECIAL_PREFIX, '');  // 'on' | 'off'
+          if (state === 'on' || state === 'off') {
+            el.dataset[state] = value;
+          }
+          return;
+        }
+
+        /* ── 일반 id 매칭 처리 ────────────────────────── */
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        if (typeof value === 'string') {
+          // 일반 텍스트
+          el.textContent = value;
+
+        } else if (value && typeof value === 'object') {
+          // HTML 태그 포함 (innerHTML 우선, 없으면 textContent)
+          if (value.html !== undefined) el.innerHTML   = value.html;
+          if (value.text !== undefined) el.textContent = value.text;
+        }
+      });
+    }
+  </script>
+</head>
+
+<body>
+
+<!-- ===== 헤더 ===== -->
+<header>
+  <div class="header-row">
+    <div class="header-left">
+      <div class="badge"><span class="badge-dot"></span>개발자 가이드</div>
+      <h1>이미지 <span>압축(Compress)</span> 옵션 가이드</h1>
+      <div class="sub">파일 업로드 시 이미지를 자동으로 압축하여 용량을 줄이는 기능에 대한 가이드입니다.</div>
+    </div>
+</div>
+</header>
+
+<!-- ===== 본문 ===== -->
+<main>
+
+  <!-- 기능 설명 -->
+  <section class="card" style="margin-top:18px;">
+    <h2>기능 설명</h2>
+    <p>
+      이미지 압축 옵션을 활성화하면, 사용자가 파일을 업로드하는 시점에
+      브라우저에서 이미지를 자동으로 압축합니다.
+      압축이 완료된 파일이 서버로 전달되므로, 업로드 속도가 빨라지고 저장 공간을 절약할 수 있습니다.
+    </p>
+    <div class="note">
+      <b>옵션 비활성화 시</b><br/>
+      압축 없이 원본 이미지 파일이 그대로 서버에 전달됩니다.
+      파일 크기가 클 경우 업로드 속도가 느려질 수 있습니다.
+    </div>
+    <div class="note" style="margin-top:8px;">
+      <b>옵션 활성화 시</b><br/>
+      파일 업로드 시점에 브라우저에서 이미지를 압축한 후 서버로 전달합니다.
+      이미지 화질은 아래 <b>이미지 품질(Quality)</b> 설정값에 따라 조절됩니다.
+    </div>
+  </section>
+
+  <!-- 처리 흐름 -->
+  <div class="section">
+    <div class="section-title">처리 흐름</div>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-icon blue">📁</div>
+        <div><div class="flow-label">파일 선택</div><div class="flow-sub">사용자가 이미지 파일 선택</div></div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-icon orange">🔍</div>
+        <div><div class="flow-label">파일 형식 확인</div><div class="flow-sub">jpg · png · webp 여부 판단</div></div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-icon blue">🗜️</div>
+        <div><div class="flow-label">브라우저 압축</div><div class="flow-sub">품질 설정값 기준으로 압축</div></div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-icon green">☁️</div>
+        <div><div class="flow-label">서버 전송</div><div class="flow-sub">압축된 파일 업로드</div></div>
+      </div>
+    </div>
+    <div class="info-box warn">
+      <span class="info-icon">⚠️</span>
+      <div class="info-text">
+        지원되지 않는 파일 형식(GIF, BMP, SVG 등)은 압축 없이 <strong>원본 그대로</strong> 서버에 전달됩니다.
+      </div>
+    </div>
+  </div>
+
+  <!-- 지원 이미지 형식 -->
+  <div class="section">
+    <div class="section-title">압축 지원 이미지 형식</div>
+    <div class="card">
+      <p>아래 세 가지 형식의 이미지 파일에 한해 압축이 적용됩니다. 이 외의 파일은 압축 없이 원본이 업로드됩니다.</p>
+      <div class="format-tags">
+        <div class="format-tag">
+          <span class="format-tag-name">.jpg / .jpeg</span>
+          <span class="format-tag-desc">일반 사진 파일에 적합</span>
+        </div>
+        <div class="format-tag">
+          <span class="format-tag-name">.png</span>
+          <span class="format-tag-desc">투명 배경 이미지 지원</span>
+        </div>
+        <div class="format-tag">
+          <span class="format-tag-name">.webp</span>
+          <span class="format-tag-desc">차세대 고효율 이미지 형식</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 예시 이미지 영역 -->
+  <div class="section">
+    <div class="section-title">적용 예시</div>
+
+    <div class="img-placeholder">
+      <div class="img-placeholder-icon">🖼️</div>
+      <div class="img-placeholder-badge">이미지 삽입 영역</div>
+      <div class="img-placeholder-title">압축 전 · 후 파일 크기 비교 화면</div>
+      <div class="img-placeholder-desc">
+        옵션 활성화 후 업로드된 원본 파일 크기와<br/>
+        압축 이후 줄어든 파일 크기가 표시된<br/>
+        화면 캡처 이미지를 이곳에 삽입하세요.
+      </div>
+    </div>
+
+    <div class="size-compare">
+      <div class="size-item">
+        <div class="size-label">원본 파일 크기</div>
+        <div class="size-value before">3.2 MB</div>
+        <div class="size-sub">original.jpg</div>
+      </div>
+      <div class="size-arrow-col">
+        <div style="text-align:center; line-height:1.8;">→<br/><span class="size-reduction">▼ 72% 절감</span></div>
+      </div>
+      <div class="size-item">
+        <div class="size-label">압축 후 파일 크기</div>
+        <div class="size-value after">910 KB</div>
+        <div class="size-sub">품질 0.80 기준</div>
+      </div>
+    </div>
+    <div class="info-box" style="margin-top:10px;">
+      <span class="info-icon">ℹ️</span>
+      <div class="info-text">위 수치는 예시입니다. 실제 압축 결과는 이미지 종류·해상도·품질 설정값에 따라 달라질 수 있습니다.</div>
+    </div>
+  </div>
+
+  <!-- 동작 안내 (사용자 관점) -->
+  <div class="section">
+    <div class="section-title">이용 안내</div>
+    <div class="card">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h4>옵션 활성화</h4>
+            <p>하단 설정 영역에서 이미지 압축 옵션을 <b>ON</b>으로 설정합니다.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h4>이미지 품질 설정</h4>
+            <p>
+              품질 값은 <b>0.01 ~ 1</b> 사이의 숫자로 설정합니다.
+              숫자가 낮을수록 파일 크기가 작아지고, 높을수록 원본에 가까운 화질이 유지됩니다.
+            </p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h4>파일 업로드</h4>
+            <p>
+              이미지 파일을 업로드하면 브라우저에서 자동으로 압축이 진행됩니다.
+              별도의 작업 없이 압축된 파일이 서버에 저장됩니다.
+            </p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <h4>결과 확인</h4>
+            <p>
+              업로드 완료 후 원본 파일 크기와 압축 후 파일 크기를 화면에서 확인할 수 있습니다.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+</main>
+
+<!-- ===== Sticky 하단 설정 패널 ===== -->
+<div class="footer-bar" id="footerPanel">
+
+  <!-- 접힘 / 펼침 토글 -->
+  <div class="panel-toggle-row" id="panelToggleRow">
+    <div class="panel-toggle-left">
+      <span style="font-size:14px;">⚙️</span>
+      <span class="panel-toggle-title">이미지 압축 옵션 설정</span>
+      <span class="panel-status off" id="panelStatusBadge">OFF</span>
+    </div>
+    <div class="panel-chevron" id="panelChevron">▲</div>
+  </div>
+
+  <!-- 패널 바디 -->
+  <div class="panel-body" id="panelBody">
+    <div class="panel-inner">
+
+      <!-- ── 기본 설정 그룹 ── -->
+      <div class="option-row">
+
+        <!-- 옵션 카드 1: 이미지 압축 활성화 -->
+        <div class="option-card">
+          <div class="field-label">이미지 압축 활성화</div>
+          <div class="toggle-row">
+            <label class="switch">
+              <input type="checkbox" id="compressSwitch" onclick="changeSettings()" />
+              <span class="switch-track">
+                <span class="switch-label on">ON</span>
+                <span class="switch-label off">OFF</span>
+              </span>
+              <span class="switch-handle"></span>
+            </label>
+            <span class="toggle-label" id="compressLabel">비활성화</span>
+          </div>
+          <div class="field-desc">파일 업로드 시 자동으로 이미지를 압축합니다.</div>
+        </div>
+
+        <!-- 옵션 카드 2: 이미지 품질 -->
+        <div class="option-card disabled" id="qualityCard">
+          <div class="field-label">이미지 품질 (Quality)</div>
+          <div class="quality-input-wrap">
+            <input type="number" id="qualityInput" class="quality-input"
+              min="0.01" max="1" step="0.01" value="0.50" placeholder="0.50" disabled onchange="changeSettings()"/>
+            <input type="range" id="qualitySlider" class="quality-slider"
+              min="0.01" max="1" step="0.01" value="0.50" disabled onchange="changeSettings()"/>
+          </div>
+          <div class="quality-hint">
+            <span>0.01 (최대 압축)</span>
+            <span>1 (원본 품질)</span>
+          </div>
+        </div>
+
+      </div><!-- /option-row 기본 설정 -->
+
+      <!-- ── 이미지 크기 설정 그룹 (향후 추가 예정) ── -->
+      <div class="option-section-title" style="margin-top:4px; display: none;">이미지 크기 설정 <span class="coming-soon-badge">준비 중</span></div>
+      <div class="option-row" style="display: none;">
+
+        <!-- 카드 3: 최대 가로 크기 (예정) -->
+        <div class="option-card disabled">
+          <div class="field-label">최대 가로 크기 (Width)</div>
+          <div class="quality-input-wrap">
+            <input type="number" class="quality-input" style="width:88px;"
+              placeholder="1920" disabled />
+            <span style="font-size:12px; color:var(--muted);">px</span>
+          </div>
+          <div class="field-desc">업로드 이미지의 최대 가로 픽셀을 제한합니다.</div>
+        </div>
+
+        <!-- 카드 4: 최대 세로 크기 (예정) -->
+        <div class="option-card disabled">
+          <div class="field-label">최대 세로 크기 (Height)</div>
+          <div class="quality-input-wrap">
+            <input type="number" class="quality-input" style="width:88px;"
+              placeholder="1080" disabled />
+            <span style="font-size:12px; color:var(--muted);">px</span>
+          </div>
+          <div class="field-desc">업로드 이미지의 최대 세로 픽셀을 제한합니다.</div>
+        </div>
+
+      </div><!-- /option-row 크기 설정 -->
+
+    </div><!-- /panel-inner -->
+  </div><!-- /panel-body -->
+
+</div><!-- /footer-bar -->
+
+<script>
+  /* 패널 접힘/펼침 */
+  document.getElementById('panelToggleRow').addEventListener('click', () => {
+    const panel = document.getElementById('footerPanel');
+    panel.classList.toggle('collapsed');
+    adjustBodyPadding();
+  });
+
+  /* Quality 슬라이더 ↔ 숫자 입력 동기화 */
+  document.getElementById('qualitySlider').addEventListener('input', function() {
+    document.getElementById('qualityInput').value = parseFloat(this.value).toFixed(2);
+  });
+  document.getElementById('qualityInput').addEventListener('input', function() {
+    const v = Math.max(0, Math.min(1, parseFloat(this.value) || 0));
+    document.getElementById('qualitySlider').value = v;
+  });
+  document.getElementById('qualityInput').addEventListener('blur', function() {
+    let v = parseFloat(this.value);
+    if (isNaN(v)) v = 0.8;
+    v = Math.max(0, Math.min(1, v));
+    this.value = v.toFixed(2);
+    document.getElementById('qualitySlider').value = v;
+  });
+
+  /* 페이지 로드 후 body padding 조정 */
+  window.addEventListener('load', adjustBodyPadding);
+  window.addEventListener('resize', adjustBodyPadding);
+</script>
+
+</body>
+</html>

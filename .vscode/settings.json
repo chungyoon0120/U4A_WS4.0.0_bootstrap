@@ -1,0 +1,32 @@
+//
+// 🔴 PORTAL – RED THEME
+// editor = dark, header / side / frame = red portal
+//
+{
+  "workbench.colorCustomizations": {
+
+    /* Editor (Dark) */
+    "editor.background": "#0D0B0B",
+
+    /* Activity Bar */
+    "activityBar.background": "#4A1212",
+    "activityBar.foreground": "#FFECEC",
+    "activityBar.inactiveForeground": "#E0A0A0",
+    "activityBar.activeBorder": "#FF3B3B",
+    "activityBarBadge.background": "#FF3B3B",
+    "activityBarBadge.foreground": "#0D0B0B",
+
+    /* Title Bar */
+    "titleBar.activeBackground": "#3D0E0E",
+    "titleBar.activeForeground": "#FFECEC",
+    "titleBar.inactiveBackground": "#3D0E0E",
+    "titleBar.inactiveForeground": "#E5B5B5",
+
+    /* Status Bar */
+    "statusBar.background": "#3D0E0E",
+    "statusBar.foreground": "#FFECEC",
+    "statusBar.noFolderBackground": "#3D0E0E",
+    "statusBar.debuggingBackground": "#B30000",
+    "statusBar.debuggingForeground": "#FFECEC"
+  }
+}

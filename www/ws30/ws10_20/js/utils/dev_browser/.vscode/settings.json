@@ -1,0 +1,24 @@
+{
+  "git.ignoreLimitWarning": true,
+  "workbench.colorCustomizations": {
+    // 🌤 Activity Bar
+    "activityBar.background": "#071C2F",       
+    "activityBar.foreground": "#8FD8FF",       
+    "activityBar.inactiveForeground": "#5FB4E8",
+    "activityBar.activeBorder": "#00C9FF",      
+    "activityBarBadge.background": "#00C9FF",
+    "activityBarBadge.foreground": "#071C2F",
+
+    // 🧊 Title Bar
+    "titleBar.activeBackground": "#051627",     
+    "titleBar.activeForeground": "#8FD8FF",
+    "titleBar.inactiveBackground": "#051627",
+    "titleBar.inactiveForeground": "#5FB4E8",
+
+    // ⚡ Status Bar
+    "statusBar.background": "#051627",
+    "statusBar.foreground": "#8FD8FF",
+    "statusBar.noFolderBackground": "#051627",
+    "statusBar.debuggingBackground": "#071C2F"
+  }
+}

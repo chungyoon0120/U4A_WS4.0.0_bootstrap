@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>도움말 템플릿</title>
+  <style>
+
+    /* =====================================================
+     * CSS Variables
+     * ===================================================== */
+    :root {
+      --bg:            #0b1220;
+      --surface:       #0f1b2f;
+      --border:        #243553;
+      --text:          #e7eefc;
+      --text-muted:    #a9b8d6;
+      --text-faint:    #647891;
+      --accent:        #4aa3ff;
+
+      --code-bg:       rgba(74,163,255,.08);
+      --code-border:   rgba(74,163,255,.18);
+      --code-text:     #7dd3fc;
+      --pre-bg:        #090f1c;
+      --pre-border:    #1e2f47;
+
+      --table-head-bg:   rgba(74,163,255,.1);
+      --table-row-even:  rgba(255,255,255,.02);
+      --table-row-hover: rgba(74,163,255,.06);
+
+      --blockquote-border: #4aa3ff;
+      --blockquote-bg:     rgba(74,163,255,.05);
+
+      --scrollbar-thumb: #647891;
+    }
+
+    /* ===== Light Mode ===== */
+    body.light-mode {
+      --bg:            #f5f7fa;
+      --surface:       #ffffff;
+      --border:        #dde1ea;
+      --text:          #101828;
+      --text-muted:    #475467;
+      --text-faint:    #98a2b3;
+      --accent:        #2563eb;
+
+      --code-bg:       rgba(37,99,235,.06);
+      --code-border:   rgba(37,99,235,.15);
+      --code-text:     #1d4ed8;
+      --pre-bg:        #f8faff;
+      --pre-border:    #dde1ea;
+
+      --table-head-bg:   rgba(37,99,235,.07);
+      --table-row-even:  rgba(0,0,0,.02);
+      --table-row-hover: rgba(37,99,235,.04);
+
+      --blockquote-border: #2563eb;
+      --blockquote-bg:     rgba(37,99,235,.04);
+
+      --scrollbar-thumb: #c0c8d8;
+    }
+
+
+    /* =====================================================
+     * Reset & Base
+     * ===================================================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Pretendard', 'Apple SD Gothic Neo', system-ui, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.75;
+      min-height: 100vh;
+      transition: background .2s, color .2s;
+      padding: 10px;
+    }
+
+    /* 언어 전환 페이드 마스크 */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--bg);
+      opacity: .55;
+      pointer-events: none;
+      transition: opacity .4s ease;
+    }
+    body.lang-ready::after { opacity: 0; }
+
+
+    /* =====================================================
+     * Scrollbar
+     * ===================================================== */
+    ::-webkit-scrollbar        { width: 16px; height: 16px; }
+    ::-webkit-scrollbar-track  { background: var(--bg); }
+    ::-webkit-scrollbar-thumb  {
+      background: var(--scrollbar-thumb);
+      border: 3px solid var(--bg);
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover { filter: brightness(1.2); }
+    ::-webkit-scrollbar-corner { background: var(--bg); }
+
+
+    /* =====================================================
+     * Layout Wrapper
+     * ===================================================== */
+    #pandoc-content {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+    }
+
+
+    /* =====================================================
+     * Headings
+     * ===================================================== */
+    #pandoc-content h1,
+    #pandoc-content h2 {
+      font-weight: 700;
+      line-height: 1.35;
+      color: var(--text);
+      margin: 2em 0 .65em;
+    }
+    #pandoc-content :is(h1, h2):first-child { margin-top: 0; }
+
+    #pandoc-content h1 {
+      font-size: 22px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--border);
+      position: relative;
+    }
+    #pandoc-content h1::after {
+      content: '';
+      position: absolute; left: 0; bottom: -2px;
+      width: 52px; height: 2px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+
+    #pandoc-content h2 {
+      font-size: 17px;
+      color: var(--accent);
+      display: flex; align-items: center; gap: 10px;
+    }
+    #pandoc-content h2::after {
+      content: '';
+      flex: 1; height: 1px;
+      background: linear-gradient(90deg, var(--border), transparent);
+    }
+
+
+    /* =====================================================
+     * Paragraph & Inline
+     * ===================================================== */
+    #pandoc-content p {
+      font-size: 14px;
+      color: var(--text);
+      margin: 0 0 .9em;
+    }
+    #pandoc-content p:last-child { margin-bottom: 0; }
+
+    #pandoc-content strong,
+    #pandoc-content b { font-weight: 700; color: var(--text); }
+
+    #pandoc-content em,
+    #pandoc-content i { font-style: italic; color: var(--text-muted); }
+
+    #pandoc-content code {
+      font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 12.5px;
+      background: var(--code-bg);
+      color: var(--code-text);
+      border: 1px solid var(--code-border);
+      border-radius: 4px;
+      padding: 1px 6px;
+    }
+
+    #pandoc-content a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color .15s, opacity .15s;
+    }
+    #pandoc-content a:hover {
+      border-bottom-color: var(--accent);
+      opacity: .8;
+    }
+
+
+    /* =====================================================
+     * Blockquote
+     * ===================================================== */
+    #pandoc-content blockquote {
+      margin: 1.2em 0;
+      padding: 12px 16px;
+      border-left: 4px solid var(--blockquote-border);
+      background: var(--blockquote-bg);
+      border-radius: 0 8px 8px 0;
+      color: var(--text-muted);
+      font-size: 13.5px;
+    }
+    #pandoc-content blockquote p {
+      margin: 0;
+      color: var(--text-muted);
+    }
+
+
+    /* =====================================================
+     * Lists
+     * ===================================================== */
+    #pandoc-content ul,
+    #pandoc-content ol {
+      margin: .6em 0 1em 1.4em;
+      padding-left: .4em;
+    }
+    #pandoc-content li {
+      font-size: 14px;
+      color: var(--text);
+      margin-bottom: .3em;
+    }
+    #pandoc-content ul > li::marker { color: var(--accent); }
+    #pandoc-content ol > li::marker { color: var(--accent); font-weight: 700; }
+
+    #pandoc-content ol > li p      { margin: 0; }
+    /* li 직속 첫 strong(제목)만 block, span 안의 strong(본문 강조)은 인라인 유지 */
+    #pandoc-content ol > li p > strong:first-child { display: block; margin-bottom: 3px; }
+    #pandoc-content ol > li p > span               { color: var(--text-muted); font-size: 13.5px; }
+
+
+    /* =====================================================
+     * Code Block
+     * ===================================================== */
+    #pandoc-content pre {
+      margin: 1.2em 0;
+      padding: 16px 18px;
+      background: var(--pre-bg);
+      border: 1px solid var(--pre-border);
+      border-radius: 10px;
+      overflow-x: auto;
+    }
+    #pandoc-content pre code {
+      background: none; border: none; padding: 0;
+      font-size: 13px; color: var(--text-muted);
+    }
+
+
+    /* =====================================================
+     * Table
+     * ===================================================== */
+    #pandoc-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.2em 0;
+      font-size: 13.5px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    #pandoc-content thead tr  { background: var(--table-head-bg); }
+    #pandoc-content th {
+      padding: 10px 14px;
+      font-weight: 700; font-size: 12px;
+      letter-spacing: .05em; text-transform: uppercase;
+      color: var(--accent);
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+    #pandoc-content td {
+      padding: 9px 14px;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    #pandoc-content tr:last-child td           { border-bottom: none; }
+    #pandoc-content tbody tr:nth-child(even)   { background: var(--table-row-even); }
+    #pandoc-content tbody tr:hover             { background: var(--table-row-hover); }
+
+
+    /* =====================================================
+     * Horizontal Rule
+     * ===================================================== */
+    #pandoc-content hr {
+      border: none; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 2em 0;
+    }
+
+  </style>
+
+  <script>
+    const oAPP = {
+      attr: { theme: '', parentId: '' },
+      IF_DATA: {}
+    };
+
+    window.toggleTheme = function(mode) {
+      if (mode === 'light')     document.body.classList.add('light-mode');
+      else if (mode === 'dark') document.body.classList.remove('light-mode');
+      else                      document.body.classList.toggle('light-mode');
+      return document.body.classList.contains('light-mode') ? 'light' : 'dark';
+    };
+
+    window.getCurrentTheme = function() {
+      return document.body.classList.contains('light-mode') ? 'light' : 'dark';
+    };
+
+    function applyLang(lang) {
+      if (!lang || typeof lang !== 'object') return;
+      Object.entries(lang).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (typeof value === 'string') {
+          el.textContent = value;
+        } else if (value && typeof value === 'object') {
+          if (value.html !== undefined) el.innerHTML   = value.html;
+          if (value.text !== undefined) el.textContent = value.text;
+        }
+      });
+      
+    }
+
+    window.addEventListener('init', (e) => {
+      oAPP.IF_DATA       = e.detail.IF_DATA   || {};
+      oAPP.attr.theme    = e.detail.theme     || 'dark';
+      oAPP.attr.parentId = e.detail.parentId  || '';
+      toggleTheme(oAPP.attr.theme);
+      
+      if (e.detail.htmlLan) applyLang(e.detail.htmlLan);
+
+      requestAnimationFrame(() => document.body.classList.add('lang-ready'));
+
+    });
+
+    function dispatchToParent(eventName, detail) {
+      const dom = parent.document.getElementById(oAPP.attr.parentId);
+      if (!dom) return;
+      dom.dispatchEvent(new CustomEvent(eventName, { detail }));
+    }
+  </script>
+</head>
+
+<body>
+<div id="pandoc-content">
+<h1 id="이미지-압축compress-옵션-가이드"><span id="497">이미지
+압축(Compress) 옵션 가이드</span></h1>
+<p><span id="498">파일 업로드 시 이미지를 자동으로 압축하여 용량을
+줄이는 기능에 대한 가이드입니다.</span></p>
+<hr />
+<h2 id="기능-설명"><span id="499">기능 설명</span></h2>
+<p><span id="500">이미지 압축 옵션을 활성화하면, 사용자가 파일을
+업로드하는 시점에 브라우저에서 이미지를 자동으로 압축합니다. 압축이
+완료된 파일이 서버로 전달되므로 업로드 속도가 빨라지고 저장 공간을
+절약할 수 있습니다.</span></p>
+<blockquote>
+<p><strong><span id="501">옵션 비활성화 시</span></strong></p>
+<p><span id="502">압축 없이 원본 이미지 파일이 그대로 서버에 전달됩니다.
+파일 크기가 클 경우 업로드 속도가 느려질 수 있습니다.</span></p>
+</blockquote>
+<blockquote>
+<p><strong><span id="503">옵션 활성화 시</span></strong></p>
+<p><span id="504">파일 업로드 시점에 브라우저에서 이미지를 압축한 후
+서버로 전달합니다. 이미지 화질은 아래 <strong>이미지
+품질(Quality)</strong> 설정값에 따라 조절됩니다.</span></p>
+</blockquote>
+<hr />
+<h2 id="처리-흐름"><span id="505">처리 흐름</span></h2>
+<table>
+<thead>
+<tr>
+<th><span id="506">단계</span></th>
+<th><span id="176">설명</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span id="507">파일 선택</span></td>
+<td><span id="508">사용자가 이미지 파일 선택</span></td>
+</tr>
+<tr>
+<td><span id="509">파일 형식 확인</span></td>
+<td><span id="510">jpg · png · webp 여부 판단</span></td>
+</tr>
+<tr>
+<td><span id="511">브라우저 압축</span></td>
+<td><span id="512">품질 설정값 기준으로 압축</span></td>
+</tr>
+<tr>
+<td><span id="513">서버 전송</span></td>
+<td><span id="514">압축된 파일 업로드</span></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>⚠️ <span id="515">지원되지 않는 파일 형식(GIF, BMP, SVG 등)은 압축
+없이 <strong>원본 그대로</strong> 서버에 전달됩니다.</span></p>
+</blockquote>
+<hr />
+<h2 id="압축-지원-이미지-형식"><span id="516">압축 지원 이미지
+형식</span></h2>
+<p><span id="517">아래 세 가지 형식의 이미지 파일에 한해 압축이
+적용됩니다. 이 외의 파일은 압축 없이 원본이 업로드됩니다.</span></p>
+<ul>
+<li><code>.jpg / .jpeg</code> — <span id="518">일반 사진 파일에
+적합</span></li>
+<li><code>.png</code> — <span id="519">투명 배경 이미지 지원</span></li>
+<li><code>.webp</code> — <span id="520">차세대 고효율 이미지
+형식</span></li>
+</ul>
+<hr />
+<h2 id="적용-예시"><span id="521">적용 예시</span></h2>
+<table>
+<thead>
+<tr>
+<th><span id="522">항목</span></th>
+<th><span id="523">수치</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span id="524">원본 파일 크기</span></td>
+<td>3.2 MB</td>
+</tr>
+<tr>
+<td><span id="525">압축 후 파일 크기</span></td>
+<td>910 KB (▼ 72% 절감, 품질 0.80 기준)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>ℹ️ <span id="526">위 수치는 예시입니다. 실제 압축 결과는 이미지
+종류·해상도·품질 설정값에 따라 달라질 수 있습니다.</span></p>
+</blockquote>
+<hr />
+<h2 id="이용-안내"><span id="527">이용 안내</span></h2>
+<ol type="1">
+<li><p><strong><span id="528">옵션 활성화</span></strong> <span
+id="529">하단 설정 영역에서 이미지 압축 옵션을 <strong>ON</strong>으로
+설정합니다.</span></p></li>
+<li><p><strong><span id="530">이미지 품질 설정</span></strong> <span
+id="531">품질 값은 <strong>0.01 ~ 1</strong> 사이의 숫자로 설정합니다.
+숫자가 낮을수록 파일 크기가 작아지고, 높을수록 원본에 가까운 화질이
+유지됩니다.</span></p></li>
+<li><p><strong><span id="532">파일 업로드</span></strong> <span
+id="533">이미지 파일을 업로드하면 브라우저에서 자동으로 압축이
+진행됩니다. 별도의 작업 없이 압축된 파일이 서버에
+저장됩니다.</span></p></li>
+<li><p><strong><span id="534">결과 확인</span></strong> <span
+id="535">업로드 완료 후 원본 파일 크기와 압축 후 파일 크기를 화면에서
+확인할 수 있습니다.</span></p></li>
+</ol>
+</div>
+</body>
+</html>

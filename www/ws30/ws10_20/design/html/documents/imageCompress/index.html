@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>sap.ui.unified.FileUploader, sap.m.UploadCollection의 이미지 압축 설정</title>
+  <style>
+
+    /* =====================================================
+     * CSS Variables
+     * ===================================================== */
+    :root {
+      --bg:          #0b1220;
+      --border:      #243553;
+      --text:        #e7eefc;
+      --text-muted:  #a9b8d6;
+      --text-faint:  #647891;
+      --accent:      #4aa3ff;
+
+      --code-bg:     rgba(74,163,255,.08);
+      --code-border: rgba(74,163,255,.18);
+      --code-text:   #7dd3fc;
+      --pre-bg:      #090f1c;
+      --pre-border:  #1e2f47;
+
+      --table-head-bg:   rgba(74,163,255,.1);
+      --table-row-even:  rgba(255,255,255,.02);
+      --table-row-hover: rgba(74,163,255,.06);
+
+      --bq-border: #4aa3ff;
+      --bq-bg:     rgba(74,163,255,.05);
+
+      --scrollbar-thumb: #647891;
+    }
+
+    body.light-mode {
+      --bg:          #f5f7fa;
+      --border:      #dde1ea;
+      --text:        #101828;
+      --text-muted:  #475467;
+      --text-faint:  #98a2b3;
+      --accent:      #2563eb;
+
+      --code-bg:     rgba(37,99,235,.06);
+      --code-border: rgba(37,99,235,.15);
+      --code-text:   #1d4ed8;
+      --pre-bg:      #f8faff;
+      --pre-border:  #dde1ea;
+
+      --table-head-bg:   rgba(37,99,235,.07);
+      --table-row-even:  rgba(0,0,0,.02);
+      --table-row-hover: rgba(37,99,235,.04);
+
+      --bq-border: #2563eb;
+      --bq-bg:     rgba(37,99,235,.04);
+
+      --scrollbar-thumb: #c0c8d8;
+    }
+
+
+    /* =====================================================
+     * Reset & Base
+     * ===================================================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body > header { display: none; } /* pandoc 자동 생성 title 헤더 숨김 */
+
+    body {
+      font-family: 'Pretendard', 'Apple SD Gothic Neo', system-ui, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.75;
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+      transition: background .2s, color .2s;
+    }
+
+    /* 언어 전환 페이드 마스크 */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--bg);
+      opacity: 1;
+      pointer-events: none;
+      transition: opacity .4s ease;
+    }
+    body.lang-ready::after { opacity: 0; }
+
+
+    /* =====================================================
+     * Scrollbar
+     * ===================================================== */
+    ::-webkit-scrollbar        { width: 16px; height: 16px; }
+    ::-webkit-scrollbar-track  { background: var(--bg); }
+    ::-webkit-scrollbar-thumb  {
+      background: var(--scrollbar-thumb);
+      border: 3px solid var(--bg);
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover { filter: brightness(1.2); }
+    ::-webkit-scrollbar-corner { background: var(--bg); }
+
+
+    /* =====================================================
+     * Headings
+     * ===================================================== */
+    h1,
+    h2 {
+      font-weight: 700;
+      line-height: 1.35;
+      color: var(--text);
+      margin: 2em 0 .65em;
+    }
+    :is(h1, h2):first-child { margin-top: 0; }
+
+    h1 {
+      font-size: 22px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--border);
+      position: relative;
+    }
+    h1::after {
+      content: '';
+      position: absolute; left: 0; bottom: -2px;
+      width: 52px; height: 2px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+
+    h2 {
+      font-size: 17px;
+      color: var(--accent);
+      display: flex; align-items: center; gap: 10px;
+    }
+    h2::after {
+      content: '';
+      flex: 1; height: 1px;
+      background: linear-gradient(90deg, var(--border), transparent);
+    }
+
+
+    /* =====================================================
+     * Paragraph & Inline
+     * ===================================================== */
+    p {
+      font-size: 14px;
+      color: var(--text);
+      margin: 0 0 .9em;
+    }
+    p:last-child { margin-bottom: 0; }
+
+    strong,
+    b { font-weight: 700; color: var(--text); }
+
+    em,
+    i { font-style: italic; color: var(--text-muted); }
+
+    code {
+      font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 12.5px;
+      background: var(--code-bg);
+      color: var(--code-text);
+      border: 1px solid var(--code-border);
+      border-radius: 4px;
+      padding: 1px 6px;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color .15s, opacity .15s;
+    }
+    a:hover {
+      border-bottom-color: var(--accent);
+      opacity: .8;
+    }
+
+
+    /* =====================================================
+     * Blockquote
+     * ===================================================== */
+    blockquote {
+      margin: 1.2em 0;
+      padding: 12px 16px;
+      border-left: 4px solid var(--bq-border);
+      background: var(--bq-bg);
+      border-radius: 0 8px 8px 0;
+      font-size: 13.5px;
+    }
+    blockquote p {
+      margin: 0;
+      color: var(--text-muted);
+    }
+    blockquote p + p { margin-top: .5em; }
+
+
+    /* =====================================================
+     * Lists
+     * ===================================================== */
+    ul,
+    ol {
+      margin: .6em 0 1em 1.4em;
+      padding-left: .4em;
+    }
+    li {
+      font-size: 14px;
+      color: var(--text);
+      margin-bottom: .3em;
+    }
+    ul > li::marker { color: var(--accent); }
+    ol > li::marker { color: var(--accent); font-weight: 700; }
+
+    /* ol 이용 안내 : 제목(strong) / 본문(span) 구분 */
+    ol > li p                  { margin: 0; }
+    ol > li p > strong:first-child { display: block; margin-bottom: 3px; }
+    ol > li p > strong + span  {
+      color: var(--text-muted);
+      font-size: 13.5px;
+    }
+
+
+    /* =====================================================
+     * Code Block
+     * ===================================================== */
+    pre {
+      margin: 1.2em 0;
+      padding: 16px 18px;
+      background: var(--pre-bg);
+      border: 1px solid var(--pre-border);
+      border-radius: 10px;
+      overflow-x: auto;
+    }
+    pre code {
+      background: none; border: none; padding: 0;
+      font-size: 13px; color: var(--text-muted);
+    }
+
+
+    /* =====================================================
+     * Table
+     * ===================================================== */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.2em 0;
+      font-size: 13.5px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      /* pandoc 기본 display:block 덮어쓰기 */
+      display: table;
+    }
+    thead tr { background: var(--table-head-bg); }
+    th {
+      padding: 10px 14px;
+      font-weight: 700; font-size: 12px;
+      letter-spacing: .05em; text-transform: uppercase;
+      color: var(--accent);
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+    td {
+      padding: 9px 14px;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    tr:last-child td           { border-bottom: none; }
+    tbody tr:nth-child(even)   { background: var(--table-row-even); }
+    tbody tr:hover             { background: var(--table-row-hover); }
+
+
+    /* =====================================================
+     * Image / Figure
+     * ===================================================== */
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      display: block;
+      margin: 0;
+    }
+    figure { margin: 0 0 2em; }
+    figcaption {
+      font-size: 12px;
+      color: var(--text-faint);
+      margin-top: 6px;
+    }
+
+
+    /* =====================================================
+     * Horizontal Rule
+     * ===================================================== */
+    hr {
+      border: none; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 2em 0;
+    }
+
+  </style>
+
+  <script>
+    const oAPP = {
+      attr: { theme: '', parentId: '' },
+      IF_DATA: {}
+    };
+
+    window.toggleTheme = function(mode) {
+      if (mode === 'light')     document.body.classList.add('light-mode');
+      else if (mode === 'dark') document.body.classList.remove('light-mode');
+      else                      document.body.classList.toggle('light-mode');
+      return document.body.classList.contains('light-mode') ? 'light' : 'dark';
+    };
+
+    window.getCurrentTheme = function() {
+      return document.body.classList.contains('light-mode') ? 'light' : 'dark';
+    };
+
+    
+    function applyLang() {
+
+      // help document를 호출한 부모의 메시지 text 정보 얻는 function 참조. 
+      const _WSUTIL = parent?.parent?.WSUTIL;
+
+      if(!_WSUTIL?.getWsMsgClsTxt){return;}
+
+      document.querySelectorAll('[msgid]').forEach(el => {
+        const msgNr = el.getAttribute('msgid');
+
+        if(!msgNr){return;}
+
+        const text = _WSUTIL.getWsMsgClsTxt("", "ZMSG_WS_COMMON_001", msgNr);
+        
+        el.textContent = text;
+        
+      });
+    }
+
+    window.addEventListener('init', (e) => {
+      oAPP.IF_DATA       = e.detail.IF_DATA   || {};
+      oAPP.attr.theme    = e.detail.theme     || 'dark';
+      oAPP.attr.parentId = e.detail.parentId  || '';
+
+      //테마 적용.
+      toggleTheme(oAPP.attr.theme);
+      
+      //도움말 문서 내 텍스트를 언어키에 맞게 변경.
+      applyLang(e.detail.msgInfo);
+
+      //언어 변경 후 페이드 아웃 효과 적용.
+      requestAnimationFrame(() => document.body.classList.add('lang-ready'));
+
+    });
+
+    function dispatchToParent(eventName, detail) {
+      const dom = parent.document.getElementById(oAPP.attr.parentId);
+      if (!dom) return;
+      dom.dispatchEvent(new CustomEvent(eventName, { detail }));
+    }
+  </script>
+</head>
+
+<body>
+<h1 id="이미지-압축compress-옵션-가이드"><span msgid="507">이미지
+압축(Compress) 옵션 가이드</span></h1>
+<p><span msgid="508">파일 업로드 시 이미지를 자동으로 압축하여 용량을
+줄이는 기능에 대한 가이드입니다.</span></p>
+<hr />
+<h2 id="기능-설명"><span msgid="509">기능 설명</span></h2>
+<p><span msgid="510">이미지 압축 옵션을 활성화하면, 사용자가 파일을
+업로드하는 시점에 브라우저에서 이미지를 자동으로 압축합니다. 압축이
+완료된 파일이 서버로 전달되므로 업로드 속도가 빨라지고 저장 공간을
+절약할 수 있습니다.</span></p>
+<blockquote>
+<p><strong><span msgid="511">옵션 비활성화 시</span></strong></p>
+<p><span msgid="512">압축 없이 원본 이미지 파일이 그대로 서버에 전달됩니다.
+파일 크기가 클 경우 업로드 속도가 느려질 수 있습니다.</span></p>
+</blockquote>
+<blockquote>
+<p><strong><span msgid="513">옵션 활성화 시</span></strong></p>
+<p><span msgid="514">파일 업로드 시점에 브라우저에서 이미지를 압축한 후
+서버로 전달합니다. 이미지 화질은 아래 <strong>이미지
+품질(Quality)</strong> 설정값에 따라 조절됩니다.</span></p>
+</blockquote>
+<hr />
+<h2 id="처리-흐름"><span msgid="515">처리 흐름</span></h2>
+<table>
+<thead>
+<tr>
+<th><span msgid="516">단계</span></th>
+<th><span msgid="517">설명</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span msgid="518">파일 선택</span></td>
+<td><span msgid="519">사용자가 이미지 파일 선택</span></td>
+</tr>
+<tr>
+<td><span msgid="520">파일 형식 확인</span></td>
+<td><span msgid="521">jpg · png · webp 여부 판단</span></td>
+</tr>
+<tr>
+<td><span msgid="522">브라우저 압축</span></td>
+<td><span msgid="523">품질 설정값 기준으로 압축</span></td>
+</tr>
+<tr>
+<td><span msgid="524">서버 전송</span></td>
+<td><span msgid="525">압축된 파일 업로드</span></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>⚠️ <span msgid="526">지원되지 않는 파일 형식(GIF, BMP, SVG 등)은 압축
+없이 <strong>원본 그대로</strong> 서버에 전달됩니다.</span></p>
+</blockquote>
+<hr />
+<h2 id="압축-지원-이미지-형식"><span msgid="527">압축 지원 이미지
+형식</span></h2>
+<p><span msgid="528">아래 세 가지 형식의 이미지 파일에 한해 압축이
+적용됩니다. 이 외의 파일은 압축 없이 원본이 업로드됩니다.</span></p>
+<ul>
+<li><code>.jpg / .jpeg</code> — <span msgid="529">일반 사진 파일에
+적합</span></li>
+<li><code>.png</code> — <span msgid="530">투명 배경 이미지 지원</span></li>
+<li><code>.webp</code> — <span msgid="531">차세대 고효율 이미지
+형식</span></li>
+</ul>
+<hr />
+<h2 id="적용-예시"><span msgid="532">적용 예시</span></h2>
+<figure>
+<img src="./img/img1.png" alt="이미지 압축 옵션 설정 화면" />
+<figcaption aria-hidden="true"><span msgid="547">이미지 압축 옵션 설정 화면</span></figcaption>
+</figure>
+<figure>
+<img src="./img/img2.png" alt="압축 결과 파일 비교 화면" />
+<figcaption aria-hidden="true"><span msgid="548">압축 결과 파일 비교 화면</span></figcaption>
+</figure>
+<table>
+<thead>
+<tr>
+<th><span msgid="533">항목</span></th>
+<th><span msgid="534">수치</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span msgid="535">원본 파일 크기</span></td>
+<td>5 MB</td>
+</tr>
+<tr>
+<td><span msgid="536">압축 후 파일 크기</span></td>
+<td><span msgid="549">1.5 MB (▼ 70% 절감, 품질 0.3 기준)</span></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>ℹ️ <span msgid="537">위 수치는 예시입니다. 실제 압축 결과는 이미지
+종류·해상도·품질 설정값에 따라 달라질 수 있습니다.</span></p>
+</blockquote>
+<hr />
+<h2 id="이용-안내"><span msgid="538">이용 안내</span></h2>
+<ol type="1">
+<li><p><strong><span msgid="539">옵션 활성화</span></strong> <span
+msgid="540">하단 설정 영역에서 이미지 압축 옵션을 <strong>ON</strong>으로
+설정합니다.</span></p></li>
+<li><p><strong><span msgid="541">이미지 품질 설정</span></strong> <span
+msgid="542">품질 값은 <strong>0.01 ~ 1</strong> 사이의 숫자로 설정합니다.
+숫자가 낮을수록 파일 크기가 작아지고, 높을수록 원본에 가까운 화질이
+유지됩니다.</span></p></li>
+<li><p><strong><span msgid="543">파일 업로드</span></strong> <span
+msgid="544">이미지 파일을 업로드하면 브라우저에서 자동으로 압축이
+진행됩니다. 별도의 작업 없이 압축된 파일이 서버에
+저장됩니다.</span></p></li>
+<li><p><strong><span msgid="545">결과 확인</span></strong> <span
+msgid="546">업로드 완료 후 원본 파일 크기와 압축 후 파일 크기를 화면에서
+확인할 수 있습니다.</span></p></li>
+</ol>
+</body>
+</html>

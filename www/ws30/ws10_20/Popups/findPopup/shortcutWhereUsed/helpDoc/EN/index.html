@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shortcut Item List Screen – User Guide</title>
+  <style>
+    /* Dark Mode Variables */
+    :root {
+      --bg: #0b1220;
+      --card: #0f1b2f;
+      --text: #e7eefc;
+      --muted: #a9b8d6;
+      --line: #243553;
+      --accent: #4aa3ff;
+      --warn: #ffcc66;
+      --gradient-start: #0b1220;
+      --gradient-end: #060b14;
+      --card-bg: rgba(15, 27, 47, .92);
+      --shadow: rgba(0, 0, 0, .28);
+      --kbd-bg: rgba(0, 0, 0, .18);
+      --note-bg: rgba(74, 163, 255, .08);
+      --warn-bg: rgba(255, 204, 102, .08);
+      --img-bg: #0a1020;
+    }
+
+    /* Light Mode Variables */
+    body.light-mode {
+      --bg: #f5f7fa;
+      --card: #ffffff;
+      --text: #1a2332;
+      --muted: #5f6b7a;
+      --line: #dce1e8;
+      --accent: #0066cc;
+      --warn: #cc8800;
+      --gradient-start: #f5f7fa;
+      --gradient-end: #e8ecf1;
+      --card-bg: rgba(255, 255, 255, .95);
+      --shadow: rgba(0, 0, 0, .08);
+      --kbd-bg: rgba(0, 0, 0, .04);
+      --note-bg: rgba(0, 102, 204, .06);
+      --warn-bg: rgba(204, 136, 0, .06);
+      --img-bg: #f8f9fb;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      background: linear-gradient(180deg, var(--gradient-start), var(--gradient-end));
+      color: var(--text);
+    }
+
+    header {
+      padding: 26px 18px 12px;
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 20px;
+      letter-spacing: -0.2px;
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 12px 18px 34px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      margin: 14px 0;
+      box-shadow: 0 10px 26px var(--shadow);
+    }
+
+    h2 {
+      margin: 0 0 10px;
+      font-size: 15px;
+    }
+
+    h3 {
+      margin: 14px 0 8px;
+      font-size: 13.5px;
+    }
+
+    p, li {
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .k {
+      display: inline-block;
+      padding: 2px 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--kbd-bg);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+    }
+
+    .note {
+      border-left: 4px solid var(--accent);
+      padding: 10px 12px;
+      background: var(--note-bg);
+      border-radius: 10px;
+      margin: 10px 0 0;
+    }
+
+    .warn {
+      border-left: 4px solid var(--warn);
+      padding: 10px 12px;
+      background: var(--warn-bg);
+      border-radius: 10px;
+      margin: 10px 0 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    @media (min-width: 880px) {
+      .grid {
+        grid-template-columns: 1.05fr .95fr;
+      }
+    }
+
+    figure {
+      margin: 0;
+    }
+
+    img {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--img-bg);
+    }
+
+    figcaption {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    footer {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 10px 18px 24px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    
+    /* WebKit (Chrome, Edge, Safari) */
+    ::-webkit-scrollbar{
+      width: 18px;   /* 세로 스크롤바 두께 */
+      height: 18px;  /* 가로 스크롤바 두께 */
+    }
+
+    ::-webkit-scrollbar-track{
+      background: var(--bg);
+    }
+
+    ::-webkit-scrollbar-thumb{
+      background: #647891;
+      border: 3px solid var(--bg);   /* 트랙과 thumb 사이 여백 느낌 */
+      border-radius: 999px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover{
+      background: rgba(169,184,214,.55);
+    }
+
+    ::-webkit-scrollbar-corner{
+      background: var(--bg);
+    }
+    
+  </style>
+
+  <script>
+    // iframe 외부에서 호출할 수 있는 모드 전환 함수
+    window.toggleTheme = function(mode) {
+      if (mode === 'light') {
+        document.body.classList.add('light-mode');
+      } else if (mode === 'dark') {
+        document.body.classList.remove('light-mode');
+      } else {
+        // mode 파라미터가 없으면 토글
+        document.body.classList.toggle('light-mode');
+      }
+      
+      // 현재 모드 반환
+      return document.body.classList.contains('light-mode') ? 'light' : 'dark';
+    };
+
+    // 현재 테마 확인 함수
+    window.getCurrentTheme = function() {
+      return document.body.classList.contains('light-mode') ? 'light' : 'dark';
+    };
+  </script>
+</head>
+
+<body>
+<header>
+  <h1>Shortcut Item List Screen – User Guide</h1>
+  <div class="sub">
+    This document explains how to review registered shortcut keys on the
+    "Shortcut Event Where to Use" screen and how to navigate to the related
+    UI event locations and server event (ABAP source).
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    <h2>1. Screen Overview</h2>
+    <div class="grid">
+      <div>
+        <p>
+          The Shortcut Item List screen displays all shortcut keys registered
+          in the application in a list format.  
+          From this screen, you can quickly navigate to the
+          <b>target UI event location</b> and the corresponding
+          <b>server event ABAP source</b>.
+        </p>
+
+        <div class="note">
+          <b>Link Behavior</b>
+          <ul>
+            <li>
+              Clicking the event name in <b>Event Target Properties</b>
+              (for example, <span class="k">press</span>)
+              moves to the <b>target UI event location</b>.
+            </li>
+            <li>
+              Clicking the <b>Event ID</b> (for example, <span class="k">EV_TEST</span>)
+              automatically launches SAP GUI and navigates to the
+              <b>ABAP source of the corresponding server event</b>.
+            </li>
+          </ul>
+        </div>
+
+        <h3>1.1 Column Description</h3>
+        <table aria-label="Shortcut list column description">
+          <thead>
+            <tr>
+              <th style="width:22%;">Column</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Hotkey</b></td>
+              <td>Displays the registered shortcut key combination
+                  (e.g. <span class="k">Ctrl+D</span>,
+                  <span class="k">Ctrl+Shift+Q</span>).</td>
+            </tr>
+            <tr>
+              <td><b>Event Target Properties</b></td>
+              <td>Displays the UI event name linked to the shortcut.
+                  Clicking it navigates to the UI event definition.</td>
+            </tr>
+            <tr>
+              <td><b>Event ID</b></td>
+              <td>Displays the server event ID.
+                  Clicking it opens SAP GUI and navigates to the ABAP source.</td>
+            </tr>
+            <tr>
+              <td><b>UI OBJ ID</b></td>
+              <td>Displays the object ID of the UI where the shortcut is registered
+                  (e.g. BUTTON2, BUTTON3).</td>
+            </tr>
+            <tr>
+              <td><b>Event Text</b></td>
+              <td>Displays the descriptive text or label of the event
+                  (e.g. TEST).</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>1.2 Search</h3>
+        <p class="muted">
+          Use the search field at the top of the screen to quickly filter
+          the list by Hotkey, event name, Event ID, or UI Object ID.
+        </p>
+
+        <h3>1.3 Refresh</h3>
+        <p>
+          Clicking the <b>Refresh</b> button (⟳) in the upper-right corner
+          reloads the list and retrieves the <b>latest shortcut key information</b>
+          currently applied to the application.
+        </p>
+        
+      </div>
+
+      <figure>
+        <!-- <img alt="Shortcut item list screen example with refresh button"
+             src="../images/image01.png" /> -->
+        <img alt="Shortcut item list screen example with refresh button"
+             src="data:image/png;base64,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rIHy+iI53YlBcK/LL1n9weBZ18YbzA1JXismTt5ljT255AHyep7oFGSz5HuNBLhZcKrjbet6Aq4A6zO6c+3t3yOvzS3y+viLu9u/rVnnH09NfedKpQOy5qw8LCtRF//xnt2tCzcceX2EgqN6J69/YFzYm3vdqqQnsbvbru+19O5cTnWWojtXK/R57b9LcWKV9jzqooJpyjDPfNbXjDZKkPcNIxOQtWCDYRkjjN9grNENwzNcvmHdtdErn/VRhLE+PrI381q/SzktGib4XsMqa+SlU4Wi/miYFX6vqZBaSVTrJYICpJISffeDet3H9wo+eeGHSwX5fxJQgaJf9bp9O9ZtqwzjOMxUCaQOp0P2xFORGMoEI0vkhXsI6OiTbcLIjirLOkWcBVWWUskTkoUAX0LWbpEixGAX3m/PcM41gFMrpIgiAhJKvzy/oa065tHfr+vjxrbcdfnlT7B/wz8P7670b2h9+z4367dtf/3icuDXutS7QbnoZx85bmrd7f50a2YdudutctduiP/c2fPrv6zPXdzW8r98ofFM83U/zojbjR2s70Tdf6RmLd83k12zZs2aNWv3mrVds2bNWu617FqsxVruNev/c9e/1nV9FH/qaV3XLZ3irFPTLOJa99rI3zWHV385X2EqxvosXul5G9FthhGsi7rXO+vzdLoeb+pxzObp+/pwFfFiGC/S6K20mjeHw7WX83Lu9WK6eH48H6fVLKXff78fsRnGcjxrl5P0Tnq2WYAqwzqltFi2yy/TatluzZdtXO766eLe8SZNYuY1vKh7vZ7Mfqzr+sp6u+tpXR+f1y3rsu51bEaj83Rysnpl109OVps0Zl3Wa/jklzSO+Xj20np0urvX88Xy63Q2HbvXBb03m8T0s3i7Hp1trddp9z68Tj+k0/nR0vvwUqwjX/tfTbmPP8o5Iro+Okwlfh7O1XMusRZreX7N2q5Zs2bNmrV7zfpvd/1TVVUP96vq42+rB7OqqvagFGt90Rw0J4OmWT0aPv6w+Wj4FZRirXN/0F8Mch8HOef+k897KAXf6/fjYhCRHx3F1ppJye/DD7rNflW131Qf3M+sC7be7bp5cpqn+++yLn/Xg9xFdD/vBes7cK+3rffs+g7summeDUafPrTr8u/1flW997h60HofXrh1dDki+ojc594/r+/O98184cxzLrEWa3l+zdquWbNmzZq1e83arlmLtdxr2bVYizVr95q1XbNmzZo1a/farsVarOVey67FmjVr1u41a7tmzZo1a/dadi3WYi33mrVds2bNmjVr95q1XbNmzVrutexarMWatXvN2q5Zs2bNmrV7bddiLdZyr2XXYs2aNWv3mrVds2bNmrV7LbsWa7GWey27Zs2aNWvW7jVru2bNmrXca9m1WIs1a/eatV2zZs2aNWv3mrVdsxZrudeya7FmzZq1e83arlmzZs3avZZdi7VYy72WXbNmzZo1a/eatV2zZs1a7rXsWqzFWu41a7tmzZo1a9buNWu7Zi3Wcq9l12LNmjVr95q1XbNmzZo1a/farsVarOVey65Zs2bNmrV7zdquWbNmLfdadi3WYi33mrVds2bNmjVr95q1XbMWa7nXsmuxFmvW7jVru2bNmjVr1u61XYu1WMu91uusfwMM+jGm9B5FzAAAAABJRU5ErkJggg==" />
+        <figcaption>
+          Figure 1. Shortcut Item List screen (Search field and Refresh button)
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+</main>
+
+</body>
+</html>
