@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>U4A Workspace #Main</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+
+    <link rel="stylesheet" href="./css/ws10_20.css">
+    <link rel="stylesheet" href="../css/jquery-ui.min.css">
+    <link rel="stylesheet" href="../css/common.css">
+    <link rel="stylesheet" href="../ws10_20/design/css/common.css">
+
+    <style>
+        .sapMPageFloatingFooter .sapUiHidden {
+            transition: top 0.35;
+        }
+
+        html,
+        body {
+            overflow-y: hidden;
+        }
+    </style>
+</head>
+
+<body class="sapUiBody u4aWsMainBody">    
+    <div id="content" style="display: none;" class="u4aWsContent"></div>
+    <script>
+        // [R&D 전용 console.log]
+        let zconsole = parent.zconsole;
+
+        /************************************************************************
+         * onError 관련 공통 로직
+         ************************************************************************/
+        const APP = parent.APP;
+        
+        // if (APP.isPackaged) {
+            // 오류 로그 감지
+            parent.WSLOG.start(parent.REMOTE, console);
+        // }
+       
+        window.onerror = parent.onError;
+        document.onerror = parent.onError;
+
+        window.removeEventListener("unhandledrejection", parent.onunhandledrejection);
+        window.addEventListener("unhandledrejection", parent.onunhandledrejection);
+    </script>
+
+    <script src="./js/library-preload.js"></script>
+    <script src="ws10_20.js"></script>
+
+</body>
+
+</html>

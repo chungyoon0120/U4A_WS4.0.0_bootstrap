@@ -1,0 +1,121 @@
+/************************************************************************
+ * U4A Workspace — 테마 토큰 (doc 12 §4.1 / §4.2)
+ * ----------------------------------------------------------------------
+ * Layer 1: Primitive  — sap_horizon 중립 팔레트 + 강조색 램프
+ * Layer 2: Semantic   — 컴포넌트는 이 토큰만 소비 (:root = white 기본)
+ * Layer 3: 테마        — themes/*.css 에서 색 토큰만 override
+ *
+ * ⚠ 중립색 값은 doc 12 §4.1 harvest 기준 초기값(제안)이다.
+ *   실제 sap_horizon / sap_horizon_dark 파라미터 덤프로 추후 교체 가능.
+ *   shape(radius/elevation/font)는 horizon 공통 고정.
+ ************************************************************************/
+
+/* ── Layer 1: Primitive ─────────────────────────────────────────── */
+:root {
+    /* horizon neutrals (light) */
+    --c-white: #ffffff;
+    --c-bg-light: #f5f6f7;
+    --c-text: #1d2d3e;
+    --c-text-muted: #556b82;
+    --c-line: #d9d9d9;
+
+    /* horizon neutrals (dark) */
+    --c-bg-dark: #12171c;
+    --c-surface-dark: #1c2228;
+    --c-text-dark: #eaecee;
+    --c-line-dark: #2c3540;
+
+    /* accent ramps */
+    --c-blue: #0070f2;
+    --c-blue-strong: #0064d9;
+    --c-purple: #7858ff;
+    --c-purple-strong: #5d36ff;
+    --c-red: #e8000d;
+    --c-red-strong: #c60017;
+    --c-green: #188918;
+    --c-green-strong: #0e6b0e;
+
+    /* horizon 상태색 (테마 공통) */
+    --c-success: #107e3e;
+    --c-warning: #e76500;
+    --c-error: #e90b0b;
+}
+
+/* ── Layer 2: Semantic (:root = white 기본) ─────────────────────── */
+:root {
+    /* color */
+    --app-bg: var(--c-bg-light);
+    --surface: var(--c-white);
+    --surface-raised: var(--c-white);
+    --text: var(--c-text);
+    --text-muted: var(--c-text-muted);
+    --line: var(--c-line);
+    --accent: var(--c-blue);
+    --accent-strong: var(--c-blue-strong);
+    --success: var(--c-success);
+    --warning: var(--c-warning);
+    --error: var(--c-error);
+
+    /* interaction states (체크리스트 B) */
+    --hover-bg: rgba(85, 107, 130, .08);
+    --active-bg: rgba(85, 107, 130, .16);
+    --selected-bg: rgba(0, 112, 242, .18);
+    --selected-text: var(--accent);
+    --focus-ring: var(--accent);
+    --disabled-bg: #f5f6f7;
+    --disabled-text: #a9b4be;
+    --disabled-opacity: .4;
+
+    /* value states — UI5 ValueState (체크리스트 B/F) */
+    --state-error: var(--c-error);
+    --state-error-bg: #ffeaea;
+    --state-warning: var(--c-warning);
+    --state-warning-bg: #fff8e5;
+    --state-success: var(--c-success);
+    --state-success-bg: #eafaf0;
+    --state-info: var(--accent);
+    --state-info-bg: #e8f1ff;
+
+    /* scrollbar (체크리스트 A) */
+    --scrollbar-thumb: #c4ccd4;
+    --scrollbar-thumb-hover: #a9b4be;
+    --scrollbar-track: transparent;
+    --scrollbar-size: 0.75rem;
+
+    /* overlay / popup (체크리스트 C) */
+    --overlay-scrim: rgba(0, 0, 0, .45);
+    --popover-bg: var(--c-white);
+    --popover-shadow: 0 0.5rem 2rem rgba(34, 54, 84, .20);
+
+    /* form / text 표면 (체크리스트 A/F) */
+    --placeholder: #8b97a3;
+    --selection-bg: rgba(0, 112, 242, .20);
+    --caret: var(--accent);
+
+    /* link / icon (체크리스트 G) */
+    --link: var(--accent);
+    --link-hover: var(--accent-strong);
+    --icon: currentColor;
+    --icon-muted: var(--c-text-muted);
+
+    /* titlebar / desktop (체크리스트 H) */
+    --titlebar-bg: var(--surface);
+    --close-hover-bg: var(--c-red);
+    --close-hover-text: var(--c-white);
+
+    /* shape — horizon 공통(테마 무관 고정) */
+    --radius: 0.5rem;
+    --radius-sm: 0.25rem;
+    --elevation: 0 0.125rem 0.5rem rgba(34, 54, 84, .10);
+    --focus-ring-width: 0.125rem;
+    --focus-ring-offset: 0.0625rem;
+    --font: "72", "72full", Arial, Helvetica, sans-serif;
+    --motion: .15s;
+}
+
+/* prefers-reduced-motion 시 트랜지션 끔 (체크리스트 I) */
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --motion: 0s;
+    }
+}

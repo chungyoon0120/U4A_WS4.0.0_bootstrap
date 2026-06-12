@@ -1,0 +1,34 @@
+/************************************************************************
+ * 테마: purple — 라이트 + 퍼플 색조
+ * doc 12 §3 은 "강조색만" 교체였으나, 테마 식별성을 위해 배경·표면·경계·
+ * 상호작용 표면까지 퍼플 색조로 틴트한다 (사용자 요청 반영). 모양은 horizon 공통.
+ ************************************************************************/
+[data-theme="horizon_purple"] {
+    /* 배경 / 표면 / 텍스트 / 경계 (퍼플 틴트) */
+    --app-bg: #efe9ff;
+    --surface: #faf8ff;
+    --surface-raised: #ffffff;
+    --text: #241b3d;
+    --text-muted: #6a5e85;
+    --line: #e1d8f6;
+
+    /* 강조 */
+    --accent: var(--c-purple);
+    --accent-strong: var(--c-purple-strong);
+
+    /* 상호작용 표면 (퍼플 톤) */
+    --hover-bg: rgba(120, 88, 255, .08);
+    --active-bg: rgba(120, 88, 255, .16);
+    --selected-bg: rgba(120, 88, 255, .22);
+
+    --disabled-bg: #ece7fa;
+    --disabled-text: #a99fc6;
+
+    --scrollbar-thumb: #cabfee;
+    --scrollbar-thumb-hover: #b4a4e6;
+
+    --state-info-bg: #efeaff;
+    --popover-bg: #faf8ff;
+
+    --titlebar-bg: #f3effd;
+}

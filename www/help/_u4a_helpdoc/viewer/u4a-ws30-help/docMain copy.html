@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>U4A WS3.0 Help</title>
+
+<style>
+:root{
+  --accent:#1976d2;
+  --danger:#e53935;
+}
+
+/* =========================
+   LAYOUT
+========================= */
+body{
+  margin:0;
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+  font-family:"Segoe UI",sans-serif;
+  overflow:hidden;
+  transition:.25s ease;
+}
+
+/* =========================
+   LIGHT
+========================= */
+body.theme-light{
+  background:#eef1f6;
+}
+
+body.theme-light .header{
+  background:linear-gradient(180deg,#ffffff,#f4f6fb);
+  border-bottom:1px solid rgba(0,0,0,0.06);
+  box-shadow:
+    12px 12px 24px rgba(0,0,0,0.08),
+    -12px -12px 24px rgba(255,255,255,0.9);
+}
+
+/* =========================
+   DARK
+========================= */
+body.theme-dark{
+  background:#1e1f23;
+}
+
+body.theme-dark .header{
+  background:#23252b;
+  box-shadow:
+    8px 8px 16px rgba(0,0,0,0.6),
+    -8px -8px 16px rgba(255,255,255,0.04);
+}
+
+/* =========================
+   HEADER
+========================= */
+.header{
+  height:56px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:0 16px;
+  -webkit-app-region:drag;
+}
+
+.group{
+  display:flex;
+  gap:10px;
+}
+
+.btn{
+  height:36px;
+  min-width:38px;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:600;
+  -webkit-app-region:no-drag;
+  transition:.15s ease;
+}
+
+/* LIGHT 버튼 */
+body.theme-light .btn{
+  background:#ffffff;
+  color:#333;
+  box-shadow:
+    6px 6px 14px rgba(0,0,0,0.08),
+    -6px -6px 14px rgba(255,255,255,0.9);
+}
+
+/* DARK 버튼 */
+body.theme-dark .btn{
+  background:#2a2c33;
+  color:#f1f1f1;
+  box-shadow:
+    4px 4px 8px rgba(0,0,0,0.6),
+    -4px -4px 8px rgba(255,255,255,0.04);
+}
+
+.btn:hover{
+  color:var(--accent);
+}
+
+.btn.close:hover{
+  color:var(--danger);
+}
+
+/* 비활성 상태 */
+.btn:disabled{
+  opacity:.35;
+  pointer-events:none;
+  cursor:default;
+}
+
+/* iframe */
+.viewer{
+  flex:1;
+}
+
+.viewer iframe{
+  width:100%;
+  height:100%;
+  border:none;
+}
+</style>
+</head>
+
+<body class="theme-light">
+
+<div class="header">
+  <div class="group">
+    <button class="btn" id="backBtn">←</button>
+    <button class="btn" id="forwardBtn">→</button>
+    <button class="btn" id="reloadBtn">⟳</button>
+  </div>
+
+  <div class="group">
+    <button class="btn" id="minBtn">—</button>
+    <button class="btn" id="maxBtn">▢</button>
+    <button class="btn close" id="closeBtn">✕</button>
+  </div>
+</div>
+
+<div class="viewer">
+  <iframe id="helpFrame" src="./site/index.html"></iframe>
+</div>
+
+<script>
+const remote = require("@electron/remote");
+const win = remote.getCurrentWindow();
+
+const frame = document.getElementById("helpFrame");
+const backBtn = document.getElementById("backBtn");
+const forwardBtn = document.getElementById("forwardBtn");
+const reloadBtn = document.getElementById("reloadBtn");
+
+let zoomLevel = 1;
+const ZOOM_STEP = 0.1;
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 2;
+
+let historyStack = [];
+let historyIndex = -1;
+
+let isThemeSyncing = false;
+let initialThemeApplied = false;
+
+/* =========================================================
+   OPTIONS (초기값 전용)
+========================================================= */
+function getOptions() {
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get("options");
+  if (!raw) return {};
+  try {
+    return JSON.parse(decodeURIComponent(raw));
+  } catch {
+    return {};
+  }
+}
+
+const options = getOptions();
+console.log("options:", options);
+
+/* =========================================================
+   THEME UTIL
+========================================================= */
+
+function setMainTheme(theme) {
+  const isDark = theme === "dark";
+  document.body.classList.toggle("theme-dark", isDark);
+  document.body.classList.toggle("theme-light", !isDark);
+}
+
+function getMainTheme() {
+  return document.body.classList.contains("theme-dark")
+    ? "dark"
+    : "light";
+}
+
+function getIframeTheme() {
+  try {
+    const doc = frame.contentDocument;
+    if (!doc || !doc.body) return null;
+    const scheme = doc.body.getAttribute("data-md-color-scheme");
+    return scheme === "slate" ? "dark" : "light";
+  } catch {
+    return null;
+  }
+}
+
+// Material 공식 radio 방식
+function setIframeTheme(theme) {
+  try {
+    const doc = frame.contentDocument;
+    if (!doc) return;
+
+    const targetScheme =
+      theme === "dark" ? "slate" : "default";
+
+    const radios = doc.querySelectorAll(
+      'input[name="__palette"][data-md-color-scheme]'
+    );
+
+    for (const r of radios) {
+      if (
+        r.getAttribute("data-md-color-scheme") ===
+        targetScheme
+      ) {
+        if (!r.checked) r.click();
+        break;
+      }
+    }
+  } catch {}
+}
+
+/* =========================================================
+   WINDOW CONTROL
+========================================================= */
+
+minBtn.onclick = () => win.minimize();
+maxBtn.onclick = () =>
+  win.isMaximized()
+    ? win.unmaximize()
+    : win.maximize();
+closeBtn.onclick = () => win.close();
+
+/* =========================================================
+   NAVIGATION
+========================================================= */
+
+function pushHistory(url) {
+  if (historyStack[historyIndex] === url) return;
+  historyStack = historyStack.slice(
+    0,
+    historyIndex + 1
+  );
+  historyStack.push(url);
+  historyIndex++;
+  updateNavState();
+}
+
+function updateNavState() {
+  backBtn.disabled = historyIndex <= 0;
+  forwardBtn.disabled =
+    historyIndex >= historyStack.length - 1;
+}
+
+backBtn.onclick = () => {
+  if (historyIndex > 0) {
+    historyIndex--;
+    frame.src = historyStack[historyIndex];
+    updateNavState();
+  }
+};
+
+forwardBtn.onclick = () => {
+  if (
+    historyIndex <
+    historyStack.length - 1
+  ) {
+    historyIndex++;
+    frame.src = historyStack[historyIndex];
+    updateNavState();
+  }
+};
+
+reloadBtn.onclick = () =>
+  frame.contentWindow.location.reload();
+
+/* =========================================================
+   THEME SYNC (완전 안정)
+========================================================= */
+
+// iframe → main
+function syncFromIframe() {
+  if (isThemeSyncing) return;
+
+  const iframeTheme = getIframeTheme();
+  if (!iframeTheme) return;
+
+  const mainTheme = getMainTheme();
+  if (iframeTheme === mainTheme) return;
+
+  isThemeSyncing = true;
+  setMainTheme(iframeTheme);
+  isThemeSyncing = false;
+}
+
+// main → iframe
+function syncToIframe() {
+  if (isThemeSyncing) return;
+
+  const mainTheme = getMainTheme();
+  const iframeTheme = getIframeTheme();
+  if (!iframeTheme) return;
+
+  if (mainTheme === iframeTheme) return;
+
+  isThemeSyncing = true;
+  setIframeTheme(mainTheme);
+  isThemeSyncing = false;
+}
+
+/* =========================================================
+   OBSERVER
+========================================================= */
+
+new MutationObserver(() => {
+  syncToIframe();
+}).observe(document.body, {
+  attributes: true,
+  attributeFilter: ["class"]
+});
+
+/* =========================================================
+   IFRAME LOAD
+========================================================= */
+
+frame.addEventListener("load", () => {
+  try {
+    pushHistory(
+      frame.contentWindow.location.href
+    );
+  } catch {}
+
+  try {
+    const doc = frame.contentDocument;
+    if (!doc || !doc.body) return;
+
+    /* ===============================================
+       1️⃣ 초기 테마 적용 (단 한번만)
+    =============================================== */
+    if (
+      !initialThemeApplied &&
+      options.theme
+    ) {
+      isThemeSyncing = true;
+      setMainTheme(options.theme);
+      setIframeTheme(options.theme);
+      isThemeSyncing = false;
+      initialThemeApplied = true;
+    } else {
+      syncFromIframe();
+    }
+
+    /* ===============================================
+       2️⃣ iframe 테마 변경 감지
+    =============================================== */
+    new MutationObserver(() => {
+      syncFromIframe();
+    }).observe(doc.body, {
+      attributes: true,
+      attributeFilter: [
+        "data-md-color-scheme",
+      ],
+    });
+
+    /* ===============================================
+       3️⃣ 내부 링크 감지
+    =============================================== */
+    doc
+      .querySelectorAll("a[href]")
+      .forEach((link) => {
+        link.addEventListener(
+          "click",
+          () => {
+            setTimeout(() => {
+              try {
+                pushHistory(
+                  frame.contentWindow
+                    .location.href
+                );
+              } catch {}
+            }, 50);
+          }
+        );
+      });
+
+    /* ===============================================
+       4️⃣ ZOOM
+    =============================================== */
+    if (options.allowZoom !== false) {
+      if (!doc.__zoomBound) {
+        doc.__zoomBound = true;
+        doc.body.style.transformOrigin =
+          "0 0";
+
+        doc.addEventListener(
+          "wheel",
+          (e) => {
+            if (!e.ctrlKey) return;
+            e.preventDefault();
+
+            zoomLevel +=
+              e.deltaY < 0
+                ? ZOOM_STEP
+                : -ZOOM_STEP;
+            zoomLevel = Math.min(
+              ZOOM_MAX,
+              Math.max(
+                ZOOM_MIN,
+                zoomLevel
+              )
+            );
+
+            doc.body.style.transform =
+              `scale(${zoomLevel})`;
+            doc.body.style.width =
+              `${100 / zoomLevel}%`;
+          },
+          { passive: false }
+        );
+      }
+    }
+  } catch {}
+});
+</script>
+
+</body>
+</html>

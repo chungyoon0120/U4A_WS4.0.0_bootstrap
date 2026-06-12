@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg        : #1d232a;
+    --surface   : #242c35;
+    --surface2  : #2b3441;
+    --border    : #374859;
+    --accent    : #7C6CF8;
+    --accent-h  : #9D91FF;
+    --accent-dim: rgba(124,108,248,0.13);
+    --danger    : #E94560;
+    --danger-dim: rgba(233,69,96,0.11);
+    --warning   : #FFD60A;
+    --success   : #4CAF50;
+    --success-dim: rgba(76,175,80,0.12);
+    --text1     : #dce6f0;
+    --text2     : #7890a4;
+    --text3     : #435264;
+  }
+  body.light {
+    --bg        : #eaecee;
+    --surface   : #ffffff;
+    --surface2  : #dde0e4;
+    --border    : #c4cad1;
+    --accent-dim: rgba(108,92,231,0.08);
+    --danger-dim: rgba(233,69,96,0.07);
+    --success-dim: rgba(76,175,80,0.08);
+    --text1     : #1a2332;
+    --text2     : #4a5a6b;
+    --text3     : #8595a3;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg); color: var(--text1);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', sans-serif;
+    font-size: 13px; overflow: hidden; user-select: none;
+    transition: opacity 0.15s;
+  }
+
+  /* 앱 레이아웃 — flex column, 창 크기에 완전 반응
+  ══════════════════════════════════════════════ */
+  .app {
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+  }
+
+  /* ── Titlebar ─────────────────────────────────── */
+  .titlebar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 14px; height: 44px; flex-shrink: 0;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    -webkit-app-region: drag;
+  }
+  .tl { display: flex; align-items: center; gap: 8px; }
+  .t-icon {
+    width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--accent), #E94560);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .titlebar h1 { font-size: 12px; font-weight: 700; }
+  .win-btns { -webkit-app-region: no-drag; display: flex; gap: 4px; }
+  .win-btn {
+    width: 26px; height: 26px; border-radius: 50%; border: none; cursor: pointer;
+    background: transparent; color: var(--text3);
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s;
+  }
+  .win-btn-close:hover { background: var(--danger); color: #fff; }
+  .win-btn-min:hover   { background: var(--surface2); color: var(--text1); }
+
+  /* ── Status strip ─────────────────────────────── */
+  .status-strip {
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    padding: 6px 0; flex-shrink: 0;
+    background: var(--surface2); border-bottom: 1px solid var(--border);
+    transition: background 0.3s;
+  }
+  .status-strip.recording { background: rgba(233,69,96,0.10); }
+  .status-strip.paused    { background: rgba(255,214,10,0.08); }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--text3); flex-shrink: 0; transition: background 0.3s;
+  }
+  .status-strip.recording .status-dot { background: var(--danger); animation: blink 1.1s ease-in-out infinite; }
+  .status-strip.paused    .status-dot { background: var(--warning); animation: none; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.12} }
+  .status-lbl {
+    font-size: 10px; font-weight: 800; letter-spacing: 1.4px;
+    color: var(--text3); transition: color 0.3s;
+  }
+  .status-strip.recording .status-lbl { color: var(--danger); }
+  .status-strip.paused    .status-lbl { color: var(--warning); }
+  .strip-sep {
+    width: 1px; height: 13px;
+    background: var(--border); flex-shrink: 0; margin: 0 2px;
+  }
+  .monitor-chip {
+    font-size: 9.5px; font-weight: 800; letter-spacing: 0.6px;
+    padding: 1px 6px; border-radius: 5px;
+    background: var(--accent-dim); color: var(--accent);
+    border: 1px solid rgba(124,108,248,0.28);
+    flex-shrink: 0;
+  }
+
+  /* ══════════════════════════════════════════════
+     스크롤 영역
+  ══════════════════════════════════════════════ */
+  .scroll-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .scroll-body::-webkit-scrollbar { width: 4px; }
+  .scroll-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── Timer ────────────────────────────────────── */
+  .timer-block {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 16px 0 12px; gap: 4px; flex-shrink: 0;
+  }
+  .timer {
+    font-size: clamp(28px, 8vw, 42px);
+    font-weight: 200; font-variant-numeric: tabular-nums;
+    letter-spacing: 3px; color: var(--text1); line-height: 1;
+  }
+  .display-row {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 11px; color: var(--text2);
+  }
+  .display-row svg { color: var(--accent); flex-shrink: 0; }
+
+  /* ── 마이크 상태 표시 (display-row 내 구분선 + 아이콘 + 텍스트) ── */
+  .mic-status-sep  { width: 1px; height: 10px; background: var(--border); flex-shrink: 0; }
+  .mic-status-icon { flex-shrink: 0; }
+  .mic-status-lbl  { font-size: 11px; }
+  /* 연결됨: 초록 */
+  .mic-status-connected   .mic-status-icon,
+  .mic-status-connected   .mic-status-lbl  { color: var(--success); }
+  /* 미연결: 흐린 색 */
+  .mic-status-disconnected .mic-status-icon,
+  .mic-status-disconnected .mic-status-lbl { color: var(--text3); }
+  /* 클릭 가능 영역: hover 시 밑줄 + 포인터 */
+  #micStatusRow                         { cursor: pointer; border-radius: 3px; padding: 1px 3px; transition: opacity .15s; }
+  #micStatusRow:hover                   { opacity: .75; }
+  #micStatusRow:hover .mic-status-lbl   { text-decoration: underline; }
+
+  /* ── Divider ──────────────────────────────────── */
+  .div { height: 1px; background: var(--border); margin: 0 14px; flex-shrink: 0; }
+
+  /* ── 녹화 컨트롤 ──────────────────────────────── */
+  .rec-row { display: flex; gap: 8px; padding: 11px 14px; flex-shrink: 0; }
+
+  .btn {
+    -webkit-app-region: no-drag;
+    border: none; border-radius: 9px;
+    font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: all 0.15s; letter-spacing: 0.2px;
+  }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; }
+
+  .btn-pause {
+    width: 40px; height: 40px; flex-shrink: 0;
+    background: var(--surface2); border: 1.5px solid var(--border); color: var(--text2);
+  }
+  .btn-pause:hover:not(:disabled) { background: var(--border); color: var(--text1); }
+  .btn-pause.resume-mode { color: var(--warning); border-color: var(--warning); }
+  .btn-pause.resume-mode:hover:not(:disabled) { background: rgba(255,214,10,0.1); }
+
+  .btn-record {
+    flex: 1; height: 40px;
+    background: var(--danger); color: #fff;
+    box-shadow: 0 2px 12px rgba(233,69,96,0.38);
+  }
+  .btn-record:hover:not(:disabled) { background: #FF6080; transform: translateY(-1px); box-shadow: 0 4px 18px rgba(233,69,96,0.50); }
+  .btn-record.stop-mode { background: var(--surface2); color: var(--danger); border: 1.5px solid var(--danger); box-shadow: none; }
+  .btn-record.stop-mode:hover:not(:disabled) { background: var(--danger-dim); transform: translateY(-1px); }
+
+  /* ── 저장 경로 ────────────────────────────────── */
+  .path-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 0 14px 10px; color: var(--text3); font-size: 10.5px; flex-shrink: 0;
+  }
+  .path-row svg { flex-shrink: 0; }
+  .path-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Consolas', monospace; }
+
+  /* ── 마이크 action-btn ON 상태 ───────────────── */
+  .action-btn.mic-on {
+    background: var(--success-dim);
+    border-color: var(--success);
+    color: var(--success);
+  }
+  .action-btn.mic-on svg { color: var(--success); }
+  .action-btn.mic-on:hover:not(:disabled) {
+    background: rgba(76,175,80,0.20);
+    border-color: var(--success);
+    color: var(--success);
+  }
+  .action-btn.mic-on:hover:not(:disabled) svg { color: var(--success); }
+  /* 마이크 ON 아이콘 펄스 애니메이션 */
+  .action-btn.mic-on .mic-icon {
+    animation: mic-pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes mic-pulse {
+    0%, 100% { opacity: 1;   transform: scale(1);    }
+    50%       { opacity: 0.55; transform: scale(0.85); }
+  }
+
+  /* ══════════════════════════════════════════════
+     액션 그리드
+  ══════════════════════════════════════════════ */
+  .action-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+    padding: 10px 14px 14px;
+  }
+
+  .action-btn {
+    -webkit-app-region: no-drag;
+    padding: 12px 8px;
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: 10px; color: var(--text2);
+    font-family: inherit; font-size: 11px; font-weight: 600;
+    cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    transition: all 0.15s; min-height: 62px;
+  }
+  .action-btn svg { color: var(--accent); flex-shrink: 0; transition: color 0.15s; }
+  .action-btn:hover:not(:disabled) { background: var(--accent-dim); border-color: var(--accent); color: var(--text1); }
+  .action-btn:hover:not(:disabled) svg { color: var(--accent-h); }
+  .action-btn:active:not(:disabled) { transform: scale(0.97); }
+  .action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .action-btn.drawing-on {
+    background: var(--accent-dim); border-color: var(--accent); color: var(--accent);
+  }
+  .action-btn.drawing-on svg { color: var(--accent); }
+
+  /* ── 마이크 장치 미연결 상태 ────────────────────
+     .mic-none-icon  : 취소선 마이크 아이콘 (기본 숨김)
+     .mic-unavailable: 장치 미연결 시 적용 — 일반 아이콘 숨기고 취소선 아이콘 표시
+  ─────────────────────────────────────────────── */
+  .action-btn .mic-none-icon                { display: none; }
+  .action-btn.mic-unavailable .mic-icon     { display: none; }
+  .action-btn.mic-unavailable .mic-none-icon{ display: block; }
+
+  /* ── 저장 오버레이 ────────────────────────────── */
+  .saving-overlay {
+    display: none; position: absolute; inset: 0;
+    background: rgba(19,19,31,0.88); backdrop-filter: blur(4px);
+    flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px; border-radius: 14px; z-index: 100;
+  }
+  .saving-overlay.visible { display: flex; }
+  .save-spinner {
+    width: 30px; height: 30px;
+    border: 3px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .save-text { font-size: 12px; color: var(--text2); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Titlebar -->
+  <div class="titlebar">
+    <div class="tl">
+      <div class="t-icon">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+          <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="white" stroke="none"/>
+        </svg>
+      </div>
+      <h1 id="titleLbl">녹화 컨트롤</h1>
+    </div>
+    <div class="win-btns">
+      <button class="win-btn win-btn-min" id="btnMin" title="최소화">
+        <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+          <line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button class="win-btn win-btn-close" id="btnClose" title="닫기">
+        <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+          <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Status + Monitor badge -->
+  <div class="status-strip" id="statusStrip">
+    <div class="status-dot"></div>
+    <span class="status-lbl" id="statusLbl">대기 중</span>
+    <div class="strip-sep"></div>
+    <span class="monitor-chip" id="monitorChip">M1</span>
+  </div>
+
+  <!-- 스크롤 가능한 본문 -->
+  <div class="scroll-body">
+
+    <!-- Timer -->
+    <div class="timer-block">
+      <div class="timer" id="timer">00:00:00</div>
+      <div class="display-row">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+        </svg>
+        <span id="displayLabel">-</span>
+        <!-- 마이크 연결 상태 표시: _refreshMicButton() 에서 mic-status-connected / mic-status-disconnected 클래스 전환 -->
+        <div class="mic-status-sep"></div>
+        <div id="micStatusRow" class="mic-status-disconnected" style="display:flex;align-items:center;gap:4px;">
+          <svg class="mic-status-icon" width="11" height="11" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="2" width="6" height="11" rx="3"/>
+            <path d="M5 10a7 7 0 0014 0"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8"  y1="23" x2="16" y2="23"/>
+          </svg>
+          <span class="mic-status-lbl" id="micStatusLbl">마이크 없음</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <!-- 녹화 컨트롤 -->
+    <div class="rec-row">
+      <button class="btn btn-pause" id="btnPause" disabled>
+        <svg id="pauseIcon" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="6" y="4" width="4" height="16" rx="1"/>
+          <rect x="14" y="4" width="4" height="16" rx="1"/>
+        </svg>
+      </button>
+      <button class="btn btn-record" id="btnRecord">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="12" cy="12" r="8"/>
+          <circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/>
+        </svg>
+        <span id="btnRecordLbl">녹화 시작</span>
+      </button>
+    </div>
+
+    <!-- 저장 경로 -->
+    <div class="path-row">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+      </svg>
+      <span class="path-text" id="pathText">-</span>
+    </div>
+
+    <div class="div"></div>
+
+    <!-- 액션 그리드 -->
+    <div class="action-grid">
+
+      <button class="action-btn" id="btnHistory">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="2" y="2" width="8" height="8" rx="1.5"/>
+          <rect x="14" y="2" width="8" height="8" rx="1.5"/>
+          <rect x="2" y="14" width="8" height="8" rx="1.5"/>
+          <rect x="14" y="14" width="8" height="8" rx="1.5"/>
+        </svg>
+        <span id="btnHistoryLbl">녹화 히스토리</span>
+      </button>
+
+      <button class="action-btn" id="btnOpenDir">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+        </svg>
+        <span id="btnOpenDirLbl">저장 폴더 열기</span>
+      </button>
+
+      <button class="action-btn" id="btnPlayLast">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="12" cy="12" r="9"/>
+          <polygon points="10,8 18,12 10,16" fill="currentColor" stroke="none"/>
+        </svg>
+        <span id="btnPlayLastLbl">최근 파일 재생</span>
+      </button>
+
+      <!-- 드로잉: 녹화 시작 전 비활성, 녹화 중 활성 -->
+      <button class="action-btn" id="btnDrawing" disabled title="녹화 시작 후 사용 가능">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <path d="M12 20h9"/>
+          <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+        <span id="btnDrawingLbl">화면 드로잉</span>
+      </button>
+
+      <button class="action-btn" id="btnSettings">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+        <span id="btnSettingsLbl">설정</span>
+      </button>
+
+      <!-- 마이크: 녹화 시작 전 비활성, 녹화 중 ON·OFF 토글 가능
+           장치 미연결 시 mic-unavailable 클래스로 mic-none-icon 표시 -->
+      <button class="action-btn" id="btnMic" disabled title="녹화 시작 후 사용 가능">
+        <!-- 일반 마이크 아이콘 (장치 연결됨) -->
+        <svg class="mic-icon" width="17" height="17" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="2" width="6" height="11" rx="3"/>
+          <path d="M5 10a7 7 0 0014 0"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8"  y1="23" x2="16" y2="23"/>
+        </svg>
+        <!-- 취소선 마이크 아이콘 (장치 미연결 시 표시) -->
+        <svg class="mic-none-icon" width="17" height="17" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="2" width="6" height="11" rx="3"/>
+          <path d="M5 10a7 7 0 0014 0"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8"  y1="23" x2="16" y2="23"/>
+          <line x1="3"  y1="3"  x2="21" y2="21" stroke="var(--danger)" stroke-width="2"/>
+        </svg>
+        <span id="btnMicLbl">마이크 OFF</span>
+      </button>
+
+    </div><!-- /action-grid -->
+
+  </div><!-- /scroll-body -->
+
+  <!-- 저장 오버레이 -->
+  <div class="saving-overlay" id="savingOverlay">
+    <div class="save-spinner"></div>
+    <span class="save-text" id="savingText">파일 저장 중...</span>
+  </div>
+
+</div><!-- /app -->
+
+<script src="./index.js"></script>
+</body>
+</html>

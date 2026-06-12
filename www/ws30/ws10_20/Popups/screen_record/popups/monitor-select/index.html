@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>화면 선택</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg       : #1d232a;
+    --surface  : #242c35;
+    --surface2 : #2b3441;
+    --border   : #374859;
+    --accent   : #7C6CF8;
+    --accent-h : #9D91FF;
+    --accent-dim: rgba(124,108,248,0.12);
+    --danger   : #E94560;
+    --success  : #4CAF50;
+    --text1    : #dce6f0;
+    --text2    : #7890a4;
+    --text3    : #435264;
+  }
+  body.light {
+    --bg       : #eaecee; --surface  : #ffffff;
+    --surface2 : #dde0e4; --border   : #c4cad1;
+    --accent-dim: rgba(108,92,231,0.09);
+    --text1    : #1a2332; --text2    : #4a5a6b; --text3    : #8595a3;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg); color: var(--text1);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', sans-serif;
+    font-size: 13px; overflow: hidden; user-select: none;
+  }
+
+  .app {
+    display: flex; flex-direction: column; height: 100vh;
+    border: 1px solid var(--border); border-radius: 14px;
+    overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.65);
+  }
+
+  /* ── Titlebar ─────────────────────────────────── */
+  .titlebar {
+    display: flex; align-items: center; justify-content: space-between;
+    height: 50px; padding: 0 18px; flex-shrink: 0;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    -webkit-app-region: drag;
+  }
+  .t-left { display: flex; align-items: center; gap: 10px; }
+  .t-icon {
+    width: 28px; height: 28px; border-radius: 7px; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--accent), #E94560);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .titlebar h1 { font-size: 14px; font-weight: 700; }
+  .t-sub { font-size: 11px; color: var(--text3); margin-left: 2px; }
+  .btn-x {
+    -webkit-app-region: no-drag;
+    width: 26px; height: 26px; border-radius: 50%; border: none;
+    background: transparent; cursor: pointer; color: var(--text3);
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s;
+  }
+  .btn-x:hover { background: var(--danger); color: #fff; }
+
+  /* ── Content ──────────────────────────────────── */
+  .content {
+    flex: 1; overflow: auto; padding: 16px 16px 8px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .content::-webkit-scrollbar { width: 4px; }
+  .content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* Loading */
+  .loading {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; height: 100%; gap: 12px; color: var(--text2);
+  }
+  .spinner {
+    width: 28px; height: 28px;
+    border: 3px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.75s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── 반응형 모니터 그리드 ─────────────────────────
+     auto-fill: 창 크기가 바뀌면 자동으로 열 수 조정
+  ─────────────────────────────────────────────── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+  }
+
+  /* ── 모니터 카드 ───────────────────────────────── */
+  .mon-card {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    overflow: hidden;
+    transition: border-color 0.15s, transform 0.12s, box-shadow 0.15s;
+    position: relative;
+  }
+  .mon-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(124,108,248,0.22);
+  }
+  .mon-card.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(124,108,248,0.25);
+  }
+  .mon-card.selected::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: rgba(124,108,248,0.05);
+    pointer-events: none;
+  }
+
+  /* 선택 체크 오버레이 */
+  .check-mark {
+    position: absolute; top: 8px; right: 8px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent);
+    display: none; align-items: center; justify-content: center;
+    box-shadow: 0 2px 8px rgba(124,108,248,0.5);
+  }
+  .mon-card.selected .check-mark { display: flex; }
+
+  /* 썸네일 */
+  .thumb {
+    width: 100%; aspect-ratio: 16/9;
+    background: #080813; overflow: hidden; position: relative;
+  }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb-ph {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text3);
+  }
+
+  /* 카드 정보 */
+  .mon-info { padding: 10px 12px 11px; }
+  .mon-name {
+    font-size: 12.5px; font-weight: 700;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-bottom: 5px;
+  }
+  .mon-meta {
+    display: flex; align-items: center; gap: 6px;
+    flex-wrap: wrap;
+  }
+  .mon-res { font-size: 11px; color: var(--text2); font-variant-numeric: tabular-nums; }
+  .badge {
+    font-size: 9.5px; font-weight: 700; padding: 1px 6px;
+    border-radius: 5px; letter-spacing: 0.4px;
+  }
+  .badge-num {
+    background: var(--accent-dim); color: var(--accent);
+    border: 1px solid rgba(124,108,248,0.25);
+  }
+  .badge-primary {
+    background: rgba(76,175,80,0.15); color: #4CAF50;
+    border: 1px solid rgba(76,175,80,0.3);
+  }
+
+  /* ── 녹화 불가 카드 ────────────────────────────── */
+  .mon-card.unsupported {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  .mon-card.unsupported:hover {
+    border-color: var(--border);
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* 썸네일 위 오버레이 */
+  .unsupported-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    pointer-events: none;
+  }
+  body.light .unsupported-overlay {
+    background: rgba(0, 0, 0, 0.40);
+  }
+  .unsupported-overlay svg {
+    color: rgba(255, 255, 255, 0.75);
+    flex-shrink: 0;
+  }
+  .unsupported-overlay span {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    text-align: center;
+    line-height: 1.4;
+    padding: 0 10px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', sans-serif;
+  }
+
+  /* ── Footer ───────────────────────────────────── */
+  .footer {
+    display: flex; align-items: center; justify-content: flex-end;
+    gap: 8px; padding: 10px 16px 12px; flex-shrink: 0;
+    border-top: 1px solid var(--border);
+  }
+  .btn {
+    -webkit-app-region: no-drag;
+    height: 36px; padding: 0 18px; border-radius: 8px; border: none;
+    font-family: inherit; font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-cancel {
+    background: var(--surface2); border: 1.5px solid var(--border); color: var(--text2);
+  }
+  .btn-cancel:hover { background: var(--border); color: var(--text1); }
+  .btn-confirm {
+    background: var(--accent); color: #fff; min-width: 110px; justify-content: center;
+    box-shadow: 0 2px 10px rgba(124,108,248,0.35);
+  }
+  .btn-confirm:hover:not(:disabled) {
+    background: var(--accent-h); transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(124,108,248,0.5);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Titlebar -->
+  <div class="titlebar">
+    <div class="t-left">
+      <div class="t-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+        </svg>
+      </div>
+      <h1 id="titleLbl">화면 선택</h1>
+      <span class="t-sub" id="subtitleLbl">녹화할 모니터를 선택하세요</span>
+    </div>
+    <button class="btn-x" id="btnX">
+      <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+        <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Content -->
+  <div class="content" id="content">
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <span id="loadingText">화면 정보를 불러오는 중...</span>
+    </div>
+    <div class="grid" id="grid" style="display:none"></div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <button class="btn btn-cancel"  id="btnCancel">취소</button>
+    <button class="btn btn-confirm" id="btnConfirm" disabled>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+      <span id="btnConfirmLbl">선택하기</span>
+    </button>
+  </div>
+
+</div>
+<script src="./index.js"></script>
+</body>
+</html>

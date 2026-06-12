@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>U4A Intro Final Fix</title>
+
+
+   <style>
+      /* ── 폰트 로컬 폴백: 인트라넷 환경에서 Google Fonts 차단 시 사용 ── */
+      @font-face {
+         font-family: 'Montserrat';
+         font-weight: 800 900;
+         font-style: normal;
+         src: local('Montserrat ExtraBold'), local('Montserrat-ExtraBold'),
+              local('Montserrat Bold'),      local('Montserrat-Bold');
+      }
+
+      /* 1. 기본 설정 */
+      body, html {
+         margin: 0; padding: 0;
+         width: 100%; height: 100%;
+         overflow: hidden;
+         background: transparent !important;
+         display: flex; justify-content: center; align-items: center;
+         font-family: 'Montserrat', 'Arial Black', 'Impact', sans-serif;
+      }
+
+      /* 2. 눈송이 캔버스 */
+      #canvas {
+         position: absolute; top: 0; left: 0;
+         width: 100%; height: 100%;
+         z-index: 20; pointer-events: none;
+         transition: opacity 1.5s ease-out;
+      }
+
+      /* 3. 비디오 컨테이너 */
+      .video-box {
+            position: relative;
+            width: 100vw; height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+            z-index: 10;
+      }
+
+      /* 4. 비디오 스타일 (테두리 제거) */
+      video {
+         width: 70%;
+         height: 70%;
+         object-fit: contain;
+
+         -webkit-mask-image: 
+               radial-gradient(ellipse at center, black 45%, transparent 85%),
+               linear-gradient(to right, transparent, black 20%, black 80%, transparent),
+               linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);
+
+         mask-image: 
+               radial-gradient(ellipse at center, black 45%, transparent 85%),
+               linear-gradient(to right, transparent, black 20%, black 80%, transparent),
+               linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);
+
+         -webkit-mask-composite: source-in;
+         mask-composite: intersect;
+
+         /* filter: blur(0.6px); */
+
+         opacity: 0;
+         animation: videoIn 1.6s ease-out forwards;
+         -webkit-app-region: no-drag;
+         /* 이 2개가 GPU 레이어로 올림 */
+         transform:translateZ(0);
+         will-change:transform;
+
+      }
+
+      @keyframes videoIn { 
+         /* 0% { opacity: 0; filter: blur(8px); }
+         100% { opacity: 1; filter: blur(0.6px); } */
+         0% { opacity: 0; }
+         100% { opacity: 1; }
+
+      }
+
+      /* 5. 텍스트 레이어 */
+      .text-layer {
+         position: absolute;
+         top: 52%;
+         left: 50%;
+         transform: translate(-50%, -50%);
+         z-index: 30;
+         display: flex;
+         flex-direction: column; /* 세로로 배치 */
+         align-items: center;    /* 가로축 중앙 정렬 */
+         justify-content: center;
+         gap: 15px;             /* 문구와 버전 사이 간격 */
+
+         white-space: nowrap;
+         opacity: 0;
+         /* filter: blur(12px); */
+
+         /* ✅ 이 두 줄 추가 — GPU 레이어 미리 분리 */
+         will-change: opacity, transform, filter;
+         backface-visibility: hidden;
+
+         transition:
+               opacity   2.2s cubic-bezier(0.22, 1, 0.36, 1),
+               transform 2.4s cubic-bezier(0.22, 1, 0.36, 1),
+               filter    2.0s cubic-bezier(0.22, 1, 0.36, 1);
+         pointer-events: none;
+      }
+
+      .text-group {
+         display: flex;
+         flex-direction: column;
+         align-items: center;    /* 가로 중앙 정렬 */
+         justify-content: center;
+         gap: 2px;              /* [중요] 메인 문구와 버전 사이 간격을 아주 가깝게 조절 */
+         text-align: center;
+      }
+
+      .text-layer.active {
+         opacity: 1;
+         transform: translate(-50%, -50%);
+         /* filter: blur(0px); */
+      }
+
+      .text-layer.exit {
+         opacity: 0;
+         transform: translate(-50%, -47%);
+         /* filter: blur(25px); */
+         transition: all 1s ease-in;
+      }
+
+      /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+         ✨ 네온 사인 ON / OFF 키프레임
+         — 빛이 이동하지 않고 제자리에서 켜졌다 꺼짐
+         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+      /* 퍼플 네온 — ON 상태 대부분, 짧게 OFF */
+      @keyframes neon-purple {
+         0%   {
+            text-shadow:
+               0 2px 0 rgba(255,255,255,0.25),
+               0 6px 18px rgba(0,0,0,0.6),
+               0 0 35px rgba(208,0,255,0.85),
+               0 0 70px rgba(208,0,255,0.50),
+               0 0 120px rgba(208,0,255,0.20);
+         }
+         /* 서서히 꺼짐 */
+         72%  {
+            text-shadow:
+               0 2px 0 rgba(255,255,255,0.25),
+               0 6px 18px rgba(0,0,0,0.6),
+               0 0 35px rgba(208,0,255,0.85),
+               0 0 70px rgba(208,0,255,0.50),
+               0 0 120px rgba(208,0,255,0.20);
+         }
+         78%  {
+            text-shadow:
+               0 2px 0 rgba(255,255,255,0.10),
+               0 6px 18px rgba(0,0,0,0.7),
+               0 0 8px  rgba(208,0,255,0.20),
+               0 0 0px  rgba(208,0,255,0);
+         }
+         /* OFF */
+         82%  {
+            text-shadow:
+               0 2px 0 rgba(255,255,255,0.05),
+               0 6px 18px rgba(0,0,0,0.8),
+               0 0 2px  rgba(208,0,255,0.08);
+         }
+         /* 다시 켜짐 */
+         88%  {
+            text-shadow:
+               0 2px 0 rgba(255,255,255,0.25),
+               0 6px 18px rgba(0,0,0,0.6),
+               0 0 35px rgba(208,0,255,0.85),
+               0 0 70px rgba(208,0,255,0.50),
+               0 0 120px rgba(208,0,255,0.20);
+         }
+         100% {
+            text-shadow:
+               0 2px 0 rgba(255,255,255,0.25),
+               0 6px 18px rgba(0,0,0,0.6),
+               0 0 35px rgba(208,0,255,0.85),
+               0 0 70px rgba(208,0,255,0.50),
+               0 0 120px rgba(208,0,255,0.20);
+         }
+      }
+
+      /* 블루 네온 — 퍼플과 타이밍 다르게 */
+      @keyframes neon-blue {
+         0%   {
+            text-shadow:
+               0 2px 0 rgba(255,255,255,0.25),
+               0 6px 18px rgba(0,0,0,0.6),
+               0 0 35px rgba(0,123,255,0.85),
+               0 0 70px rgba(0,123,255,0.50),
+               0 0 120px rgba(0,123,255,0.20);
+         }
+         60%  {
+            text-shadow:
+               0 2px 0 rgba(255,255,255,0.25),
+               0 6px 18px rgba(0,0,0,0.6),
+               0 0 35px rgba(0,123,255,0.85),
+               0 0 70px rgba(0,123,255,0.50),
+               0 0 120px rgba(0,123,255,0.20);
+         }
+         66%  {
+            text-shadow:
+               0 2px 0 rgba(255,255,255,0.10),
+               0 6px 18px rgba(0,0,0,0.7),
+               0 0 8px  rgba(0,123,255,0.20);
+         }
+         70%  {
+            text-shadow:
+               0 2px 0 rgba(255,255,255,0.05),
+               0 6px 18px rgba(0,0,0,0.8),
+               0 0 2px  rgba(0,123,255,0.08);
+         }
+         76%  {
+            text-shadow:
+               0 2px 0 rgba(255,255,255,0.25),
+               0 6px 18px rgba(0,0,0,0.6),
+               0 0 35px rgba(0,123,255,0.85),
+               0 0 70px rgba(0,123,255,0.50),
+               0 0 120px rgba(0,123,255,0.20);
+         }
+         100% {
+            text-shadow:
+               0 2px 0 rgba(255,255,255,0.25),
+               0 6px 18px rgba(0,0,0,0.6),
+               0 0 35px rgba(0,123,255,0.85),
+               0 0 70px rgba(0,123,255,0.50),
+               0 0 120px rgba(0,123,255,0.20);
+         }
+      }
+
+      /* 화이트 네온 */
+      @keyframes neon-white {
+         0%   {
+            text-shadow:
+               0 2px 0 rgba(0,0,0,0.4),
+               0 6px 16px rgba(0,0,0,0.7),
+               0 0 20px rgba(255,255,255,0.55),
+               0 0 50px rgba(255,255,255,0.20);
+         }
+         80%  {
+            text-shadow:
+               0 2px 0 rgba(0,0,0,0.4),
+               0 6px 16px rgba(0,0,0,0.7),
+               0 0 20px rgba(255,255,255,0.55),
+               0 0 50px rgba(255,255,255,0.20);
+         }
+         85%  {
+            text-shadow:
+               0 2px 0 rgba(0,0,0,0.5),
+               0 6px 16px rgba(0,0,0,0.8),
+               0 0 4px  rgba(255,255,255,0.15);
+         }
+         90%  {
+            text-shadow:
+               0 2px 0 rgba(0,0,0,0.5),
+               0 6px 16px rgba(0,0,0,0.9),
+               0 0 1px  rgba(255,255,255,0.05);
+         }
+         95%  {
+            text-shadow:
+               0 2px 0 rgba(0,0,0,0.4),
+               0 6px 16px rgba(0,0,0,0.7),
+               0 0 20px rgba(255,255,255,0.55),
+               0 0 50px rgba(255,255,255,0.20);
+         }
+         100% {
+            text-shadow:
+               0 2px 0 rgba(0,0,0,0.4),
+               0 6px 16px rgba(0,0,0,0.7),
+               0 0 20px rgba(255,255,255,0.55),
+               0 0 50px rgba(255,255,255,0.20);
+         }
+      }
+
+      /* WORK SPACE gradient — opacity로 glow ON/OFF */
+      @keyframes neon-gradient {
+         0%   { opacity: 1;   filter: brightness(1)   drop-shadow(0 0 18px rgba(180,0,255,0.55)) drop-shadow(0 0 40px rgba(0,80,255,0.35)); }
+         65%  { opacity: 1;   filter: brightness(1)   drop-shadow(0 0 18px rgba(180,0,255,0.55)) drop-shadow(0 0 40px rgba(0,80,255,0.35)); }
+         71%  { opacity: 0.55; filter: brightness(0.7) drop-shadow(0 0 4px  rgba(180,0,255,0.15)); }
+         75%  { opacity: 0.35; filter: brightness(0.5) drop-shadow(0 0 1px  rgba(180,0,255,0.05)); }
+         80%  { opacity: 1;   filter: brightness(1)   drop-shadow(0 0 18px rgba(180,0,255,0.55)) drop-shadow(0 0 40px rgba(0,80,255,0.35)); }
+         100% { opacity: 1;   filter: brightness(1)   drop-shadow(0 0 18px rgba(180,0,255,0.55)) drop-shadow(0 0 40px rgba(0,80,255,0.35)); }
+      }
+
+      /* ver-patch 퍼플 네온 */
+      @keyframes neon-patch {
+         0%   { opacity: 1;   text-shadow: 0 0 14px rgba(192,0,255,0.60), 0 0 35px rgba(192,0,255,0.25), 0 1px 2px rgba(0,0,0,0.7); }
+         70%  { opacity: 1;   text-shadow: 0 0 14px rgba(192,0,255,0.60), 0 0 35px rgba(192,0,255,0.25), 0 1px 2px rgba(0,0,0,0.7); }
+         74%  { opacity: 0.5; text-shadow: 0 0 4px  rgba(192,0,255,0.15), 0 1px 2px rgba(0,0,0,0.8); }
+         78%  { opacity: 0.2; text-shadow: 0 0 1px  rgba(192,0,255,0.05), 0 1px 2px rgba(0,0,0,0.9); }
+         82%  { opacity: 1;   text-shadow: 0 0 14px rgba(192,0,255,0.60), 0 0 35px rgba(192,0,255,0.25), 0 1px 2px rgba(0,0,0,0.7); }
+         100% { opacity: 1;   text-shadow: 0 0 14px rgba(192,0,255,0.60), 0 0 35px rgba(192,0,255,0.25), 0 1px 2px rgba(0,0,0,0.7); }
+      }
+
+      /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+         개별 요소에 애니메이션 적용
+         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+      .logo-ws .w {
+         font-size: 250px;
+         color: #d000ff;
+         letter-spacing: -12px;
+         z-index: 2;
+
+         text-shadow:
+            0 2px 0 rgba(255,255,255,0.25),
+            0 6px 18px rgba(0,0,0,0.6),
+            0 0 35px rgba(208,0,255,0.85),
+            0 0 70px rgba(208,0,255,0.50),
+            0 0 120px rgba(208,0,255,0.20);
+
+         animation: neon-purple 7s ease-in-out infinite;
+         animation-delay: 0s;
+      }
+
+      .logo-ws .s {
+         font-size: 200px;
+         color: #007bff;
+         margin-left: -35px;
+         margin-bottom: 5px;
+         z-index: 1;
+
+         text-shadow:
+            0 2px 0 rgba(255,255,255,0.25),
+            0 6px 18px rgba(0,0,0,0.6),
+            0 0 35px rgba(0,123,255,0.85),
+            0 0 70px rgba(0,123,255,0.50),
+            0 0 120px rgba(0,123,255,0.20);
+
+         animation: neon-blue 9s ease-in-out infinite;
+         animation-delay: 1.5s;
+      }
+
+      .text-line-1 {
+         font-size: 136px;
+         font-weight: 800;
+         color: #ffffff;
+         line-height: 1;
+         margin-bottom: -10px;
+         text-shadow:
+            0 2px 0 rgba(0,0,0,0.4),
+            0 6px 16px rgba(0,0,0,0.7),
+            0 0 20px rgba(255,255,255,0.55),
+            0 0 50px rgba(255,255,255,0.20);
+
+         animation: neon-white 11s ease-in-out infinite;
+         animation-delay: 3s;
+      }
+
+      .text-line-2 { 
+         font-size: 3.5rem; 
+         font-weight: 900; 
+         background: linear-gradient(to right, #c000ff, #0066ff);
+         -webkit-background-clip: text; 
+         -webkit-text-fill-color: transparent;
+         background-clip: text;
+         animation: neon-gradient 8s ease-in-out infinite;
+         animation-delay: 2s;
+         letter-spacing: -1.5px;
+         line-height: 1;
+      }
+
+      .workspace-row{
+         display:flex;
+         align-items:flex-end;
+         gap:28px;
+      }
+
+      /* 버전 */
+      .version-row {
+         margin-top: 18px;
+         display: flex;
+         gap: 40px;
+         /* font-size: 60px; */
+         font-size: 1.2rem;
+         font-weight: 600;
+         opacity: 0.9;
+         letter-spacing: 2px;
+         text-transform: uppercase;
+      }
+
+      .ver-major{
+         color:#e6ebff;
+         text-shadow:
+            0 1px 2px rgba(0,0,0,0.7),
+            0 0 8px rgba(120,140,255,0.25);
+      }
+
+      .ver-patch{
+         color:#c000ff;
+         text-shadow:
+            0 0 14px rgba(192,0,255,0.60),
+            0 0 35px rgba(192,0,255,0.25),
+            0 1px 2px rgba(0,0,0,0.7);
+
+         animation: neon-patch 6.5s ease-in-out infinite;
+         animation-delay: 0.8s;
+      }
+
+      /* .text-layer가 active 되기 전엔 애니메이션 일시정지 */
+      .text-layer:not(.active) .w,
+      .text-layer:not(.active) .s,
+      .text-layer:not(.active) .text-line-1,
+      .text-layer:not(.active) .text-line-2,
+      .text-layer:not(.active) .ver-major,
+      .text-layer:not(.active) .ver-patch {
+         animation-play-state: paused;
+      }
+
+      /* 자연스러운 종료용 */
+      video.fade-out {
+         animation: videoOut 1.6s ease forwards;
+      }
+
+      @keyframes videoOut {
+         0% {
+            opacity: 1;
+            /* filter: blur(0.6px); */
+            transform: scale(1);
+         }
+         100% {
+            opacity: 0;
+            /* filter: blur(12px); */
+            transform: scale(1.12);
+         }
+      }
+
+
+     /* 자연스러운 종료용 — 전체 body (텍스트 + 눈송이 포함) */
+      body.fade-out {
+         animation: bodyOut 1.0s ease forwards;
+      }
+
+      @keyframes bodyOut {
+         0%   { opacity: 1; }
+         /* 50%  { opacity: 0.5; } */
+         100% { opacity: 0; }
+      }
+
+
+      .logo-ws .w { font-size: clamp(120px, 14vw, 260px); }
+      .logo-ws .s { font-size: clamp(100px, 12vw, 220px); }
+
+      .text-line-1 { font-size: clamp(64px, 7vw, 140px); }
+      .text-line-2 { font-size: clamp(64px, 7vw, 140px); }
+
+      .version-row { font-size: clamp(22px, 2.2vw, 60px); }
+
+   </style>
+
+</head>
+<body>
+
+   <canvas id="canvas"></canvas>
+
+   <div class="video-box">
+      <video id="introVideo" autoplay muted playsinline preload="auto">
+         <source src="img/intro.mp4" type="video/mp4">
+      </video>
+      
+      <div class="text-layer" id="textLayer">
+         <div class="text-group">
+               <div class="text-line-2">U4A Workspace</div>
+               <div class="version-row">
+                  <span class="ver-major">Release Ver </span>
+                  <span class="ver-patch">Patch Level </span>
+               </div>
+         </div>
+      </div>
+
+   </div>
+
+    <script>
+      /* 1. 눈송이 엔진 */
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      let width, height, particles = [];
+      let animationFrameId;
+      const particleCount = 150; 
+
+      function initSnow() {
+         width = window.innerWidth; height = window.innerHeight;
+         canvas.width = width; canvas.height = height;
+         particles = [];
+         for(let i=0; i<particleCount; i++) particles.push(new Particle());
+      }
+
+      function getParams(){
+         const params = new URLSearchParams(window.location.search);
+         const raw = params.get("params");
+         if (!raw) return {};
+         try {
+            return JSON.parse(decodeURIComponent(raw));
+         } catch {
+            return {};
+         }
+
+      }
+
+
+      class Particle {
+         constructor() { this.reset(); }
+         reset() {
+               this.x = Math.random()*width; this.y = Math.random()*height;
+               this.z = Math.random()*10+1; 
+               this.s = (11-this.z)*1.5; this.o = (11-this.z)*0.1;
+               this.v = (11-this.z)*0.3+0.5;
+         }
+         update() {
+               this.y += this.v; 
+               if(this.y > height+10) { this.y=-10; this.x=Math.random()*width; }
+         }
+         draw() {
+               ctx.beginPath(); ctx.arc(this.x, this.y, this.s, 0, Math.PI*2);
+               ctx.fillStyle = `rgba(255,255,255,${this.o})`; ctx.fill();
+         }
+      }
+
+      function animateSnow() {
+         ctx.clearRect(0,0,width,height);
+         particles.forEach(p=>{ p.update(); p.draw(); });
+         animationFrameId = requestAnimationFrame(animateSnow);
+      }
+
+      window.addEventListener('resize', initSnow);
+      initSnow();
+      animateSnow();
+
+
+      /* ★ 2. 타이밍 로직 수정 (핵심 해결책) ★ */
+      const textLayer = document.getElementById('textLayer');
+      const video = document.getElementById('introVideo');
+      
+      // 중복 실행 방지용 플래그
+      let isScenarioStarted = false;
+
+
+      function startScenario() {
+         if (isScenarioStarted) return; // 이미 실행됐으면 무시
+         isScenarioStarted = true;
+
+         //U4A 메이저 및 서포트 패치
+         const _params = getParams();
+         document.querySelector('.ver-major').innerText = `Release Ver ${_params.versn}`;
+         document.querySelector('.ver-patch').innerText = `Patch Level ${_params.splev}`;
+
+         // [1초] 텍스트 등장
+         setTimeout(() => { textLayer.classList.add('active'); }, 1500);
+         
+         // 영상 제거
+         setTimeout(() => { 
+            video.classList.add('fade-out');
+         }, 4700);
+         
+         // // [8.5초] 종료
+         // setTimeout(() => { cancelAnimationFrame(animationFrameId); }, 8500);
+      }
+
+      // [중요] 비디오가 이미 재생 중인지 확인해서 즉시 실행
+      if (video.readyState >= 2 || !video.paused) {
+            startScenario();
+
+      } else {
+            // 재생 중이 아니면 이벤트 대기 (안전장치)
+            video.addEventListener('play', startScenario);
+            video.addEventListener('canplay', startScenario);
+      }
+
+      // 혹시 모르니 강제 재생 시도
+      video.play().catch(e => { console.log("Autoplay blocked, waiting for interaction"); });
+
+      const { ipcRenderer } = require('electron');
+
+      ipcRenderer.on('win:request-close', (event, data) => {
+
+         document.body.classList.add('fade-out');
+
+         document.body.addEventListener('animationend', () => {
+            // 여기가 fade-out 완전히 끝난 시점
+            window.close(); // 또는 다음 동작
+         }, { once: true }); // once: true → 한 번만 실행
+
+      });
+
+      document.addEventListener('DOMContentLoaded', function () { 
+
+         const _params = getParams();
+         // document.querySelector('.ver-major').innerText = `Release Ver ${_params.versn}`;
+         // document.querySelector('.ver-patch').innerText = `Patch Level ${_params.splev}`;
+         // if(_params.devTools === true){ window.onclick = ()=>{ window.close();};}         
+
+      });
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,813 @@
+/************************************************************************
+ * U4A Workspace — 셸 공통 컴포넌트 CSS (doc 12 §6.1 shell.css)
+ * ----------------------------------------------------------------------
+ * 기준 비주얼: sap_horizon. 색/radius/shadow 는 전부 tokens.css 의
+ * var(--*) 만 소비한다 (hex/하드코딩 0). doc 12 §6.6 체크리스트 표면 커버.
+ ************************************************************************/
+
+/* ── 기본 리셋 / 베이스 ──────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    font-family: var(--font);
+    font-size: 0.875rem;
+    color: var(--text);
+    background: var(--app-bg);
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* 색 트랜지션 (테마 전환 플래시 방지 — 체크리스트 I) */
+body,
+.u4a-bar,
+.u4a-titlebar,
+.u4a-btn,
+.u4a-tree,
+.u4a-table {
+    transition: background-color var(--motion) linear, color var(--motion) linear,
+        border-color var(--motion) linear;
+}
+
+/* ── 스크롤바 (체크리스트 A) ────────────────────────────────────── */
+* {
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+    width: var(--scrollbar-size);
+    height: var(--scrollbar-size);
+}
+
+*::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: var(--radius);
+    border: 0.1875rem solid transparent;
+    background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+    background-clip: padding-box;
+}
+
+/* ── 텍스트 선택 / placeholder / caret (체크리스트 A) ───────────── */
+::selection {
+    background: var(--selection-bg);
+}
+
+::placeholder {
+    color: var(--placeholder);
+}
+
+input,
+textarea {
+    caret-color: var(--caret);
+}
+
+/* ── 포커스 링 (체크리스트 B — 접근성 필수) ─────────────────────── */
+:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring);
+    outline-offset: var(--focus-ring-offset);
+}
+
+/* ── 링크 (체크리스트 G) ────────────────────────────────────────── */
+a {
+    color: var(--link);
+    text-decoration: none;
+}
+
+a:hover {
+    color: var(--link-hover);
+    text-decoration: underline;
+}
+
+/* ── 커스텀 타이틀바 (체크리스트 H) ─────────────────────────────── */
+.u4a-titlebar {
+    display: flex;
+    align-items: center;
+    height: 2.75rem;
+    padding: 0 0.25rem 0 0.75rem;
+    background: var(--titlebar-bg);
+    border-bottom: 0.0625rem solid var(--line);
+    -webkit-app-region: drag;
+}
+
+.u4a-titlebar__logo {
+    width: 1.5rem;
+    height: 1.5rem;
+    object-fit: contain;
+    -webkit-app-region: no-drag;
+}
+
+.u4a-titlebar__title {
+    margin-left: 0.5rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.u4a-titlebar__spacer {
+    flex: 1 1 auto;
+}
+
+/* 창 제어 버튼 */
+.u4a-winbtn {
+    -webkit-app-region: no-drag;
+    width: 2.25rem;
+    height: 2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    background: transparent;
+    color: var(--icon-muted);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+}
+
+.u4a-winbtn:hover {
+    background: var(--hover-bg);
+    color: var(--text);
+}
+
+.u4a-winbtn:active {
+    background: var(--active-bg);
+}
+
+.u4a-winbtn--close:hover {
+    background: var(--close-hover-bg);
+    color: var(--close-hover-text);
+}
+
+.u4a-winbtn i {
+    font-size: 0.95rem;
+}
+
+/* ── Bar (서브헤더 등) ──────────────────────────────────────────── */
+.u4a-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding: 0 0.75rem;
+    background: var(--surface);
+    border-bottom: 0.0625rem solid var(--line);
+}
+
+.u4a-bar__title {
+    font-weight: 600;
+    color: var(--text);
+}
+
+.u4a-bar__spacer {
+    flex: 1 1 auto;
+}
+
+/* ── 버튼 (체크리스트 B/G) ──────────────────────────────────────── */
+.u4a-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    height: 2rem;
+    padding: 0 0.75rem;
+    border: 0.0625rem solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+}
+
+.u4a-btn:hover {
+    background: var(--hover-bg);
+}
+
+.u4a-btn:active {
+    background: var(--active-bg);
+}
+
+.u4a-btn:disabled {
+    background: var(--disabled-bg);
+    color: var(--disabled-text);
+    opacity: var(--disabled-opacity);
+    cursor: default;
+}
+
+.u4a-btn--emphasized {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--c-white);
+}
+
+.u4a-btn--emphasized:hover {
+    background: var(--accent-strong);
+    border-color: var(--accent-strong);
+}
+
+/* 위험(파괴) 버튼 — 1차(솔리드 accent) 버튼과 구분되게 아웃라인 danger.
+   hover/active 시 채워진다. 레드 테마(accent=error)에서도 형태로 구분됨. */
+.u4a-btn--negative {
+    background: transparent;
+    border-color: var(--error);
+    color: var(--error);
+}
+
+.u4a-btn--negative:hover {
+    background: var(--error);
+    border-color: var(--error);
+    color: var(--c-white);
+}
+
+.u4a-btn--negative:active {
+    background: var(--error);
+    border-color: var(--error);
+    color: var(--c-white);
+    filter: brightness(0.92);
+}
+
+.u4a-btn i {
+    font-size: 0.9rem;
+}
+
+/* 아이콘 전용 버튼 (체크리스트 G) */
+.u4a-btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--icon-muted);
+    cursor: pointer;
+}
+
+.u4a-btn-icon:hover {
+    background: var(--hover-bg);
+    color: var(--text);
+}
+
+.u4a-btn-icon:active {
+    background: var(--active-bg);
+}
+
+.u4a-btn-icon:disabled {
+    color: var(--disabled-text);
+    opacity: var(--disabled-opacity);
+    cursor: default;
+}
+
+.u4a-btn-icon i {
+    font-size: 1.05rem;
+}
+
+/* ── 드롭다운 메뉴 / 팝오버 (체크리스트 C) ──────────────────────── */
+.u4a-menu {
+    position: fixed;
+    min-width: 11rem;
+    padding: 0.25rem;
+    background: var(--popover-bg);
+    border: 0.0625rem solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--popover-shadow);
+    z-index: 1000;
+}
+
+.u4a-menu[hidden] {
+    display: none;
+}
+
+.u4a-menu__item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.625rem;
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.u4a-menu__item:hover,
+.u4a-menu__item:focus-visible {
+    background: var(--hover-bg);
+}
+
+.u4a-menu__item[aria-disabled="true"] {
+    color: var(--disabled-text);
+    opacity: var(--disabled-opacity);
+    cursor: default;
+}
+
+.u4a-menu__item i {
+    font-size: 0.95rem;
+    width: 1.1rem;
+    text-align: center;
+    color: var(--icon-muted);
+}
+
+/* ── 스플리터 (체크리스트 D) ────────────────────────────────────── */
+.u4a-splitter {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+}
+
+.u4a-splitter__pane {
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+}
+
+.u4a-splitter__bar {
+    flex: 0 0 0.5rem;
+    cursor: col-resize;
+    background: transparent;
+    border-left: 0.0625rem solid var(--line);
+    transition: background-color var(--motion) linear;
+}
+
+.u4a-splitter__bar:hover {
+    background: var(--hover-bg);
+}
+
+/* ── 상태 뱃지 (ObjectStatus 대체) ──────────────────────────────── */
+.u4a-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    color: var(--text-muted);
+}
+
+.u4a-status::before {
+    content: "";
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 50%;
+    background: var(--text-muted);
+}
+
+.u4a-status--success {
+    color: var(--state-success);
+}
+
+.u4a-status--success::before {
+    background: var(--state-success);
+}
+
+/* ── 빈 상태 (체크리스트 D) ─────────────────────────────────────── */
+.u4a-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 2rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+/* ── Busy 오버레이 / 스피너 (체크리스트 C/D) ───────────────────── */
+.u4a-busy {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: var(--overlay-scrim);
+    z-index: 2000;
+}
+
+.u4a-busy[data-busy="true"] {
+    display: flex;
+}
+
+.u4a-busy__spinner {
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 0.1875rem solid var(--line);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: u4a-spin 0.8s linear infinite;
+}
+
+@keyframes u4a-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .u4a-busy__spinner {
+        animation: none;
+    }
+}
+
+/* ── 토스트 (MessageToast 대체) ─────────────────────────────────── */
+.u4a-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 2rem;
+    transform: translateX(-50%);
+    max-width: 80%;
+    padding: 0.625rem 1rem;
+    background: var(--popover-bg);
+    color: var(--text);
+    border: 0.0625rem solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--popover-shadow);
+    z-index: 3000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--motion) linear;
+}
+
+.u4a-toast[data-show="true"] {
+    opacity: 1;
+}
+
+/* ── 메시지 박스 (MessageBox 대체) ──────────────────────────────── */
+.u4a-msgbox {
+    min-width: 18rem;
+    max-width: 28rem;
+    padding: 0;
+    border: 0.0625rem solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface-raised);
+    color: var(--text);
+    box-shadow: var(--popover-shadow);
+}
+
+.u4a-msgbox__title {
+    padding: 0.75rem 1rem 0;
+    font-weight: 700;
+}
+
+.u4a-msgbox__title[data-type="E"] {
+    color: var(--state-error);
+}
+
+.u4a-msgbox__title[data-type="W"] {
+    color: var(--state-warning);
+}
+
+.u4a-msgbox__title[data-type="S"] {
+    color: var(--state-success);
+}
+
+.u4a-msgbox__body {
+    padding: 0.75rem 1rem;
+    white-space: pre-wrap;
+    line-height: 1.45;
+}
+
+.u4a-msgbox__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem 1rem;
+}
+
+/* ── 폼 다이얼로그 (Dialog + Form 대체) ─────────────────────────── */
+.u4a-dialog {
+    min-width: 22rem;
+    max-width: 90vw;
+    padding: 0;
+    border: 0.0625rem solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface-raised);
+    color: var(--text);
+    box-shadow: var(--popover-shadow);
+}
+
+.u4a-dialog__header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    border-bottom: 0.0625rem solid var(--line);
+    font-weight: 700;
+}
+
+.u4a-dialog__header i {
+    font-size: 1rem;
+    color: var(--icon-muted);
+}
+
+.u4a-dialog__body {
+    padding: 1rem;
+}
+
+.u4a-dialog__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem 1rem;
+}
+
+.u4a-dialog__body--flush {
+    padding: 0;
+}
+
+/* ── 폼 (체크리스트 F) ──────────────────────────────────────────── */
+.u4a-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+}
+
+.u4a-form__row {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.u4a-label {
+    font-weight: 700;
+    color: var(--text);
+}
+
+.u4a-label--required::after {
+    content: " *";
+    color: var(--state-error);
+}
+
+/* 검증 메시지 — suggestion 처럼 입력칸 아래로 떠서 표시 (행 간격 영향 없음) */
+.u4a-field__msg {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 5;
+    margin-top: 0.25rem;
+    padding: 0.375rem 0.625rem;
+    max-width: 100%;
+    font-size: 0.8125rem;
+    color: var(--state-error);
+    background: var(--state-error-bg);
+    border: 0.0625rem solid var(--state-error);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--popover-shadow);
+}
+
+.u4a-field__msg:empty {
+    display: none;
+}
+
+/* 입력/셀렉트 (체크리스트 F) */
+.u4a-input,
+.u4a-select {
+    width: 100%;
+    height: 2.25rem;
+    padding: 0 0.625rem;
+    border: 0.0625rem solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+}
+
+.u4a-input:hover,
+.u4a-select:hover {
+    border-color: var(--text-muted);
+}
+
+/* 폼 컨트롤 포커스: 굵은 outline 대신 부드러운 강조 테두리 + 은은한 halo */
+.u4a-input:focus-visible,
+.u4a-select:focus-visible,
+.u4a-combo:focus-visible,
+.u4a-combo[data-open="true"] {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 0.1875rem var(--selected-bg);
+}
+
+.u4a-input:disabled,
+.u4a-select:disabled {
+    background: var(--disabled-bg);
+    color: var(--disabled-text);
+    opacity: var(--disabled-opacity);
+}
+
+/* ValueState.Error (체크리스트 F) */
+.u4a-input[data-vs="error"] {
+    border-color: var(--state-error);
+    background: var(--state-error-bg);
+}
+
+/* number 스피너 / select 펼침 — 네이티브 한계 보정 */
+.u4a-select {
+    appearance: auto;
+}
+
+/* ── 커스텀 셀렉트 (네이티브 <select> 대체 — 체크리스트 A/C) ────── */
+.u4a-combo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+    height: 2.25rem;
+    padding: 0 0.5rem 0 0.625rem;
+    border: 0.0625rem solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    user-select: none;
+}
+
+.u4a-combo:hover {
+    border-color: var(--text-muted);
+}
+
+.u4a-combo[aria-disabled="true"] {
+    background: var(--disabled-bg);
+    color: var(--disabled-text);
+    opacity: var(--disabled-opacity);
+    cursor: default;
+}
+
+.u4a-combo__text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.u4a-combo__arrow {
+    flex: 0 0 auto;
+    display: inline-flex;
+    color: var(--icon-muted);
+}
+
+.u4a-combo__arrow i {
+    font-size: 0.75rem;
+    transition: transform var(--motion) linear;
+}
+
+.u4a-combo[data-open="true"] .u4a-combo__arrow i {
+    transform: rotate(180deg);
+}
+
+/* 펼침 목록 (팝오버 토큰 소비) */
+.u4a-combo__list {
+    position: fixed;
+    z-index: 1100;
+    max-height: 16rem;
+    overflow: auto;
+    padding: 0.25rem;
+    background: var(--popover-bg);
+    border: 0.0625rem solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--popover-shadow);
+}
+
+.u4a-combo__list[hidden] {
+    display: none;
+}
+
+.u4a-combo__item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.625rem;
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.u4a-combo__item:hover,
+.u4a-combo__item[data-active="true"] {
+    background: var(--hover-bg);
+}
+
+.u4a-combo__item[aria-selected="true"] {
+    background: var(--selected-bg);
+    color: var(--selected-text);
+    font-weight: 600;
+}
+
+.u4a-combo__check {
+    margin-left: auto;
+    display: inline-flex;
+    color: var(--accent);
+    visibility: hidden;
+}
+
+.u4a-combo__item[aria-selected="true"] .u4a-combo__check {
+    visibility: visible;
+}
+
+.u4a-combo__check i {
+    font-size: 0.8rem;
+}
+
+/* 체크박스 / 라디오 (체크리스트 A) */
+.u4a-check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    color: var(--text);
+}
+
+.u4a-check input[type="checkbox"],
+.u4a-check input[type="radio"] {
+    width: 1.05rem;
+    height: 1.05rem;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+/* 스위치 (sap.m.Switch 대체 — 체크리스트 F) */
+.u4a-switch {
+    position: relative;
+    display: inline-block;
+    width: 2.75rem;
+    height: 1.5rem;
+}
+
+.u4a-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.u4a-switch__slider {
+    position: absolute;
+    inset: 0;
+    border-radius: 1rem;
+    background: var(--disabled-bg);
+    border: 0.0625rem solid var(--line);
+    transition: background-color var(--motion) linear;
+    cursor: pointer;
+}
+
+.u4a-switch__slider::before {
+    content: "";
+    position: absolute;
+    width: 1.125rem;
+    height: 1.125rem;
+    left: 0.1875rem;
+    top: 0.125rem;
+    border-radius: 50%;
+    background: var(--surface);
+    box-shadow: var(--elevation);
+    transition: transform var(--motion) linear;
+}
+
+.u4a-switch input:checked + .u4a-switch__slider {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+.u4a-switch input:checked + .u4a-switch__slider::before {
+    transform: translateX(1.25rem);
+}
+
+.u4a-switch input:focus-visible + .u4a-switch__slider {
+    outline: var(--focus-ring-width) solid var(--focus-ring);
+    outline-offset: var(--focus-ring-offset);
+}
+
+/* About iframe */
+.u4a-about-frame {
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+/* ── 모달 backdrop (체크리스트 C) ───────────────────────────────── */
+dialog::backdrop {
+    background: var(--overlay-scrim);
+}
+
+/* ── 고대비 모드 (체크리스트 I) ─────────────────────────────────── */
+@media (forced-colors: active) {
+
+    .u4a-btn,
+    .u4a-btn-icon,
+    .u4a-winbtn,
+    .u4a-menu {
+        border: 0.0625rem solid CanvasText;
+    }
+}

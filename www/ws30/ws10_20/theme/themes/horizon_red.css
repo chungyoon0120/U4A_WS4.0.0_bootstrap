@@ -1,0 +1,34 @@
+/************************************************************************
+ * 테마: red — 라이트 + 레드 색조
+ * doc 12 §3 은 "강조색만" 교체였으나, 테마 식별성을 위해 배경·표면·경계·
+ * 상호작용 표면까지 레드 색조로 틴트한다 (사용자 요청 반영). 모양은 horizon 공통.
+ ************************************************************************/
+[data-theme="horizon_red"] {
+    /* 배경 / 표면 / 텍스트 / 경계 (레드 틴트) */
+    --app-bg: #ffecec;
+    --surface: #fff7f7;
+    --surface-raised: #ffffff;
+    --text: #3d1d1f;
+    --text-muted: #855a5e;
+    --line: #f3d4d6;
+
+    /* 강조 */
+    --accent: var(--c-red);
+    --accent-strong: var(--c-red-strong);
+
+    /* 상호작용 표면 (레드 톤) */
+    --hover-bg: rgba(232, 0, 13, .06);
+    --active-bg: rgba(232, 0, 13, .13);
+    --selected-bg: rgba(232, 0, 13, .18);
+
+    --disabled-bg: #fae6e6;
+    --disabled-text: #c6a4a6;
+
+    --scrollbar-thumb: #eec3c5;
+    --scrollbar-thumb-hover: #e6a8ab;
+
+    --state-info-bg: #ffeaea;
+    --popover-bg: #fff7f7;
+
+    --titlebar-bg: #fdeff0;
+}

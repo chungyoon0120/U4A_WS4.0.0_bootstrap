@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>U4A Workspace - Final</title>
+    <meta name="google" content="notranslate">
+    <style>
+        * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+        html, body { width: 100%; height: 100%; margin: 0; padding: 0; 
+            /* background-color: #000000;  */
+            overflow: hidden; font-family: 'Segoe UI', Roboto, sans-serif; }
+
+        #canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+
+        .u4aWsIntroArea {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* background: rgba(0, 0, 0, 0.2); */
+            background-image: url("./img/wsBg4.png");
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+        }
+
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            z-index: 20;
+            padding-bottom: 50px;
+            animation: u4a-ws-wsNameGlow-dark 7s ease-in-out infinite;
+        }
+
+        .u4a-title {
+            font-family: 'Arial Black', sans-serif;
+            font-size: clamp(60px, 10vw, 120px);
+            font-weight: 900;
+            margin: 0;
+            margin-bottom: 5px; /* 간격 균일화 */
+            color: #CC00FF;
+            letter-spacing: -0.05em;
+            line-height: 1;
+            animation: u4a-ws-wsNameGlow-dark 5s ease-in-out infinite;
+        }
+
+        .workspace-title {
+            font-family: 'Arial Black', sans-serif;
+            font-size: clamp(55px, 8.5vw, 110px);
+            font-weight: 900;
+            line-height: 1;
+            padding-bottom: 0.1em;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #7c3aed, #2563eb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            -webkit-text-stroke: 2px #7c3aed;
+            animation: u4a-ws-wsNameGlow-dark 5s ease-in-out infinite;
+            margin: 0;
+            margin-bottom: 15px; /* 버전 정보와의 간격 */
+        }
+
+
+
+        .version-box {
+            font-family: 'Segoe UI', sans-serif;
+            color: rgba(255, 255, 255, 0.8);
+            border-top: none;
+            margin-top: 0;
+            padding-top: 0;
+            width: 100%;
+            animation: u4a-ws-wsNameGlow-dark 5s ease-in-out infinite;
+        }
+
+        .ver-item { 
+            font-size: clamp(18px, 3.5vw, 28px); 
+            margin: 4px 0; /* 제각각이던 높이 간격 통일 */
+            font-weight: 600; 
+            line-height: 1.2;
+            animation: u4a-ws-wsNameGlow-dark 5s ease-in-out infinite;
+        }
+        
+        /* ID 대신 클래스로 통합 적용 */
+        .ver-val { 
+            color: #ffffff; 
+            font-weight: 800;
+            /* animation: u4a-ws-wsNameGlow-dark 5s ease-in-out infinite;  */
+        }
+
+        @keyframes u4a-ws-wsNameGlow-dark {
+            0%, 100% { filter: drop-shadow(0 0 0 rgba(124,58,237,0)); }
+            50% { filter: drop-shadow(0 0 35px rgba(124,58,237,.8)); }
+        }
+
+    </style>
+</head>
+<body>
+
+    <canvas id="canvas"></canvas>
+
+    <div class="u4aWsIntroArea">
+        <div class="main-container">
+            <div class="u4a-title">U4A</div>
+            <div class="workspace-title">Workspace</div>
+            
+            <div class="version-box">
+                <div class="ver-item">Release Version <span id="relver" class="ver-val">999</span></div>
+                <div class="ver-item">Patch Level <span id="patver" class="ver-val">9</span></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // (async () => {
+        //     try {
+        //         const moduleUrl = "./tubes1.min.js";
+        //         const { default: TubesCursor } = await import(moduleUrl);
+        //         window.bg = TubesCursor(document.getElementById('canvas'), {
+        //             tubes: {
+        //                 colors: ["#FF2D78", "#7B2FFF", "#0066FF"],
+        //                 lights: { intensity: 180, colors: ["#FF2D78", "#7B2FFF", "#00AAFF"] }
+        //             }
+        //         });
+        //         let ticker = 0;
+        //         function animate() {
+        //             ticker += 0.0018;
+        //             const x = (Math.sin(ticker * 0.9) * 0.35 + 0.5) * window.innerWidth;
+        //             const y = (Math.cos(ticker * 0.7) * 0.35 + 0.5) * window.innerHeight;
+        //             if (bg?.pointer) { bg.pointer.x = x; bg.pointer.y = y; }
+        //             requestAnimationFrame(animate);
+        //         }
+        //         animate();
+        //     } catch (err) { console.error(err); }
+        // })();
+
+        (function () {
+            "use strict";
+
+            const
+                REMOTE = parent.REMOTE || parent.parent.REMOTE,
+                WSUTIL = parent.WSUTIL || parent.parent.WSUTIL,
+                APP = parent.APP || parent.parent.APP;
+
+            let oSettings = WSUTIL.getWsSettingsInfo(),
+                sAppVer = oSettings.appVersion,
+                sPatchVer = oSettings.patch_level;
+
+            // let oPackageJson = REMOTE.require("./package.json"),
+                // oVerTable = document.getElementById("verTable"),
+                // oVerTextArea = document.getElementById("verTextArea"),
+            let oRelVer = document.getElementById("relver"),
+                oPatVer = document.getElementById("patver"),
+                // oVerTxt = document.getElementById("versionTxt"),
+                // oPatVerTr = document.getElementById("patVerTr"),
+
+                sVersion = sAppVer, // 앱 버전                
+                iSupportPatch = Number(sPatchVer || 0);
+           
+            // // Trial 버전 여부 확인
+            // if (oSettings.isTrial) {
+
+            //     oVerTxt.innerHTML = `Trial version`;
+
+            //     // 버전 테이블 영역 숨기기
+            //     oVerTable.style.display = "none";
+
+            //     return;
+
+            // }
+
+            // Trial Version 영역 숨기기
+            // oVerTextArea.style.display = "none";
+
+            oRelVer.innerHTML = sVersion;
+
+            // oPatVerTr.style.display = "";
+
+            oPatVer.innerHTML = iSupportPatch;
+
+        })();
+    </script>
+</body>
+</html>

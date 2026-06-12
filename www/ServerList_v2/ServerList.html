@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+      <title>U4A Workspace #ServerList</title>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+      <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+      <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+
+      <!-- Font Awesome 7.2.0 (아이콘) -->
+      <link rel="stylesheet" href="../lib/fontawesome/7.2.0/css/all.min.css">
+
+      <!-- 테마 시스템 (doc 12 §6.1) : tokens → themes → shell -->
+      <link rel="stylesheet" href="../ws30/ws10_20/theme/tokens.css">
+      <link rel="stylesheet" href="../ws30/ws10_20/theme/themes/horizon_white.css">
+      <link rel="stylesheet" href="../ws30/ws10_20/theme/themes/horizon_dark.css">
+      <link rel="stylesheet" href="../ws30/ws10_20/theme/themes/horizon_purple.css">
+      <link rel="stylesheet" href="../ws30/ws10_20/theme/themes/horizon_red.css">
+      <link rel="stylesheet" href="../ws30/ws10_20/theme/themes/horizon_green.css">
+      <link rel="stylesheet" href="../ws30/ws10_20/theme/shell.css">
+
+      <!-- 서버 리스트 컴포넌트 CSS -->
+      <link rel="stylesheet" href="./css/serverlist.css">
+</head>
+
+<body>
+
+      <!-- SAP 사운드 재생용 (Electron/Node 자원 유지) -->
+      <audio id="u4aWsAudio" style="visibility: hidden;"></audio>
+
+      <!-- 셸 컨텐츠 (ServerList.js 가 동적 렌더) -->
+      <div id="content" class="u4a-fade"></div>
+
+      <!-- Busy 오버레이 (BusyIndicator 대체) -->
+      <div id="u4aWsBusyIndicator" class="u4a-busy" role="progressbar" aria-valuetext="Busy" title="Please wait">
+            <div class="u4a-busy__spinner"></div>
+      </div>
+
+      <!-- 테마 API shim → 그 다음 서버리스트 로직 -->
+      <script src="../ws30/ws10_20/theme/theme-api.js"></script>
+      <script src="ServerList.js"></script>
+
+</body>
+
+</html>

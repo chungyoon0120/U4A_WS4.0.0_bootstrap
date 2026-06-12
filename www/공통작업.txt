@@ -1,0 +1,65 @@
+// 자주쓰는 메소드 모음
+
+- 메시지 출력
+parent.showMessage(sap, 10, "E", oReturn.MSG);
+
+- 메시지 클래스 텍스트 구하기
+APPCOMMON.fnGetMsgClsTxt("002");
+
+- 컨트롤러 클래스 실행 패턴
+oAPP.common.execControllerClass = function(METHNM, INDEX, TCODE, oAppInfo)
+
+
+
+
+- Tree Data 를 Array로 변환
+_parseTree2Tab(aUspTreeData, "USPTREE");
+
+
+- Array => TreeModel
+APPCOMMON.fnSetModelProperty("/WS30/USPTREE", oResult.T_DATA);
+
+var oModel = sap.ui.getCore().getModel();
+
+oAPP.fn.fnSetTreeJson(oModel, "WS30.USPTREE", "OBJKY", "PUJKY", "USPTREE");
+
+
+// 글로벌 설정 정보 구하기
+let oGlobalSettings = await WSUTIL.getWsGlobalSettingInfoAsync();
+
+
+
+// 30번 페이지에서 자주 쓰는 공통 메소드
+
+_fnFindUspTreeItem(OBJKY);    
+- OBJKY를 가지고 Tree Item 구하는 공통 메소드
+
+
+
+/**
+ * WS SETTING 정보 구하는 법
+ */
+let REMOTE = require('@electron/remote'),
+	PATH = REMOTE.require('path'),
+	APP = REMOTE.app,
+	APPPATH = APP.getAppPath(),
+	PATHINFO = require(PATH.join(APPPATH, "ws30", "resources", "pathInfo.js")),
+	WSSETTINGS = require(PATHINFO.WSSETTINGS);
+		
+		
+// WS 로컬 폴더 경로
+REMOTE.app.getPath("userData");
+
+// WS의 WWW 루트 폴더 경로
+REMOTE.app.getAppPath();
+
+
+ // busy 키고 Lock 켜기
+oAPP.common.fnSetBusyLock("X");
+
+// 해당 서버에 적용할지 말지 결정하는 function
+// true 일 경우만 수행하는 로직으로 짜면 됨.
+oAPP.common.checkWLOList("C", "UHAK900630");
+
+
+

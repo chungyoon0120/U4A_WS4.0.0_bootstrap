@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width:100%; height:100%; background:rgba(0,0,0,0.01); overflow:hidden; cursor:crosshair; }
+
+  /* ── 드로잉 캔버스 ──────────────────────────── */
+  #drawCanvas { position:fixed; inset:0; width:100%; height:100%; cursor:crosshair; touch-action:none; }
+  body.eraser    #drawCanvas { cursor:cell; }
+  body.text-mode #drawCanvas { cursor:text; }
+
+  /* ── 툴바 ───────────────────────────────────── */
+  .toolbar {
+    position:fixed; top:52px; left:50%; transform:translateX(-50%);
+    display:flex; align-items:center; gap:6px; padding:6px 10px;
+    background:rgba(22, 30, 40, 0.90); backdrop-filter:blur(12px) saturate(1.5);
+    -webkit-backdrop-filter:blur(12px) saturate(1.5);
+    border-radius:12px; border:1px solid rgba(255,255,255,0.10);
+    box-shadow:0 4px 20px rgba(0,0,0,0.55);
+    user-select:none; z-index:9999; cursor:grab;
+  }
+  .toolbar.dragging { cursor:grabbing; box-shadow:0 8px 32px rgba(0,0,0,0.7); }
+  body.light .toolbar { background:rgba(234, 236, 238, 0.94); border-color:rgba(0,0,0,0.08); box-shadow:0 4px 20px rgba(0,0,0,0.20); }
+  body.light .toolbar.dragging { box-shadow:0 8px 32px rgba(0,0,0,0.25); }
+  .sep { width:1px; height:22px; background:rgba(255,255,255,0.15); flex-shrink:0; }
+  body.light .sep { background:rgba(0,0,0,0.12); }
+
+  /* ── 도구 버튼 ─────────────────────────────── */
+  .tool-btn {
+    width:32px; height:32px; border-radius:8px; border:none; background:transparent;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    color:rgba(255,255,255,0.65); transition:background 0.14s, color 0.14s; flex-shrink:0;
+  }
+  body.light .tool-btn { color:rgba(26,35,50,0.60); }
+  .tool-btn:hover { background:rgba(255,255,255,0.12); color:#fff; }
+  body.light .tool-btn:hover { background:rgba(0,0,0,0.08); color:#1a2332; }
+  .tool-btn.active { background:rgba(124,108,248,0.30); color:#9D91FF; }
+
+  /* ── 굵기 슬라이더 ─────────────────────────── */
+  .size-wrap { display:flex; align-items:center; gap:6px; padding:0 4px; }
+  .size-dot { background:rgba(255,255,255,0.5); border-radius:50%; flex-shrink:0; transition:width 0.1s, height 0.1s; }
+  body.light .size-dot { background:rgba(0,0,0,0.4); }
+  input[type="range"] { width:72px; height:3px; appearance:none; background:rgba(255,255,255,0.2); border-radius:2px; outline:none; cursor:pointer; }
+  body.light input[type="range"] { background:rgba(0,0,0,0.15); }
+  input[type="range"]::-webkit-slider-thumb { appearance:none; width:13px; height:13px; border-radius:50%; background:#7C6CF8; box-shadow:0 0 0 2px rgba(124,108,248,0.35); transition:transform 0.1s; }
+  input[type="range"]::-webkit-slider-thumb:hover { transform:scale(1.2); }
+
+  /* ── 색상 팔레트 ───────────────────────────── */
+  .palette { display:flex; gap:5px; align-items:center; }
+  .color-swatch { width:20px; height:20px; border-radius:50%; cursor:pointer; border:2px solid transparent; transition:transform 0.12s, border-color 0.12s; flex-shrink:0; }
+  .color-swatch:hover { transform:scale(1.18); }
+  .color-swatch.active { border-color:#fff; transform:scale(1.15); }
+  body.light .color-swatch.active { border-color:#333; }
+  .color-picker-wrap { position:relative; width:22px; height:22px; flex-shrink:0; }
+  .color-picker-btn { width:22px; height:22px; border-radius:50%; border:2px dashed rgba(255,255,255,0.4); cursor:pointer; background:transparent; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.55); font-size:12px; transition:border-color 0.12s; }
+  .color-picker-btn:hover { border-color:rgba(255,255,255,0.8); }
+  body.light .color-picker-btn { border-color:rgba(0,0,0,0.3); color:rgba(0,0,0,0.4); }
+  input[type="color"] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+
+  /* ── 투명도 ─────────────────────────────────── */
+  .opacity-wrap { display:flex; align-items:center; gap:5px; }
+  .opacity-lbl { font-size:9.5px; font-weight:700; letter-spacing:0.5px; color:rgba(255,255,255,0.4); font-family:-apple-system,sans-serif; }
+  body.light .opacity-lbl { color:rgba(0,0,0,0.35); }
+  input[type="range"].opacity-range { width:52px; }
+
+  /* ── 닫기 버튼 ─────────────────────────────── */
+  .btn-close-drawing { width:32px; height:32px; border-radius:8px; border:none; background:rgba(233,69,96,0.18); cursor:pointer; display:flex; align-items:center; justify-content:center; color:#E94560; transition:background 0.14s, transform 0.12s; flex-shrink:0; }
+  .btn-close-drawing:hover { background:rgba(233,69,96,0.38); transform:scale(1.05); }
+
+  /* ══════════════════════════════════════════════
+     텍스트 박스 (PPT 스타일)
+  ══════════════════════════════════════════════ */
+
+  /* 드래그 생성 미리보기 */
+  #tboxPreview {
+    position:fixed; display:none; pointer-events:none; z-index:9996;
+    border:1.5px dashed rgba(124,108,248,0.75);
+    background:rgba(124,108,248,0.04);
+    border-radius:2px;
+  }
+  #tboxPreview.active { display:block; }
+
+  /* 텍스트 박스 래퍼 */
+  .tbox {
+    position:fixed; z-index:9997;
+    min-width:60px; min-height:32px;
+    /* transform:rotate(Xdeg) — JS 인라인 스타일로 설정 */
+  }
+  /* 텍스트 모드 외에서는 이벤트 차단 */
+  body:not(.text-mode) .tbox { pointer-events:none; }
+  /* 핸들은 pointer-events:all 로 명시 선언되어 있으므로 비텍스트 모드에서 별도 차단 */
+  body:not(.text-mode) .tbox-handle { pointer-events:none; }
+
+  /* 텍스트 박스 본문: 항상 이벤트 차단 (이동은 래퍼 mousedown 에서 처리) */
+  .tbox-body {
+    width:100%; height:100%;
+    min-height:32px;
+    overflow:hidden;
+    user-select:none;
+    -webkit-user-select:none;
+  }
+
+  /* 텍스트 표시 영역 */
+  .tbox-content {
+    padding:5px 8px;
+    white-space:pre-wrap;
+    word-break:break-word;
+    line-height:1.5;
+    font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+    font-weight:700;
+    min-height:1.5em;
+    pointer-events:none;
+    user-select:none;
+    -webkit-user-select:none;
+  }
+  .tbox.selected { cursor:move; }
+
+  /* 선택 프레임 (핸들의 부모, position:absolute) */
+  .tbox-selection {
+    position:absolute;
+    inset:-6px;
+    border:1.5px solid transparent;
+    border-radius:2px;
+    pointer-events:none;
+    transition:border-color 0.1s;
+  }
+  .tbox:hover:not(.selected)    .tbox-selection { border-color:rgba(124,108,248,0.35); }
+  .tbox.selected                .tbox-selection { border-color:rgba(124,108,248,0.95); }
+  body.light .tbox.selected     .tbox-selection { border-color:rgba(80,70,200,0.95); }
+
+  /* 리사이즈 핸들 (8방향) */
+  .tbox-handle {
+    position:absolute;
+    width:9px; height:9px;
+    background:#fff; border:2px solid #7C6CF8; border-radius:2px;
+    pointer-events:all;
+    opacity:0; transition:opacity 0.1s;
+    z-index:1;
+  }
+  body.light .tbox-handle { background:#1A1A2E; border-color:#5A4FE8; }
+  .tbox.selected .tbox-handle { opacity:1; }
+
+  .tbox-handle[data-dir="nw"] { top:-5px;            left:-5px;            cursor:nw-resize; }
+  .tbox-handle[data-dir="n"]  { top:-5px;            left:calc(50% - 4px); cursor:n-resize; }
+  .tbox-handle[data-dir="ne"] { top:-5px;            right:-5px;           cursor:ne-resize; }
+  .tbox-handle[data-dir="w"]  { top:calc(50% - 4px); left:-5px;            cursor:w-resize; }
+  .tbox-handle[data-dir="e"]  { top:calc(50% - 4px); right:-5px;           cursor:e-resize; }
+  .tbox-handle[data-dir="sw"] { bottom:-5px;         left:-5px;            cursor:sw-resize; }
+  .tbox-handle[data-dir="s"]  { bottom:-5px;         left:calc(50% - 4px); cursor:s-resize; }
+  .tbox-handle[data-dir="se"] { bottom:-5px;         right:-5px;           cursor:se-resize; }
+
+  /* 회전 줄기 */
+  .tbox-rotate-stem {
+    position:absolute; top:-22px; left:calc(50% - 0.5px);
+    width:1px; height:16px; background:rgba(124,108,248,0.7);
+    pointer-events:none; opacity:0; transition:opacity 0.1s;
+  }
+  .tbox.selected .tbox-rotate-stem { opacity:1; }
+
+  /* 회전 핸들 */
+  .tbox-handle[data-dir="rotate"] {
+    top:-30px; left:calc(50% - 4px);
+    cursor:grab; border-radius:50%;
+    background:#fff; border-color:#7C6CF8;
+  }
+  .tbox-handle[data-dir="rotate"]:active { cursor:grabbing; }
+  /* 회전 핸들 기본 숨김, 선택 시 표시 (일반 핸들 규칙에 포함) */
+
+  /* ══════════════════════════════════════════════════════════════════
+     Issue 2: text mode 에서 텍스트 블럭 마우스오버 시 커서 보정
+     body가 cursor:crosshair 를 상속하므로 명시 재정의 필요
+  ══════════════════════════════════════════════════════════════════ */
+  body.text-mode .tbox { cursor: move; }
+
+  /* ══════════════════════════════════════════════════════════════════
+     도움말 툴팁 — 선택(오브젝트 모드) 상태에서 tbox 상단 표시
+     rotate 핸들(top:-30px) 보다 충분히 위에 위치
+  ══════════════════════════════════════════════════════════════════ */
+  .tbox.selected .tbox-selection::before {
+    content: 'Enter / F2 / 더블클릭: 텍스트 수정  ·  드래그: 이동  ·  상단 핸들: 회전';
+    position: absolute;
+    bottom: calc(100% + 14px); /* 상단 핸들 위로 충분히 */
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(22, 30, 40, 0.90);
+    color: rgba(255,255,255,0.80);
+    font-size: 10px;
+    font-family: 'Malgun Gothic','Apple SD Gothic Neo',-apple-system,sans-serif;
+    padding: 3px 10px;
+    border-radius: 5px;
+    white-space: nowrap;
+    pointer-events: none;
+    animation: tipFadeIn 0.18s 0.35s both;
+  }
+  body.light .tbox.selected .tbox-selection::before {
+    background: rgba(240,240,248,0.95);
+    color: rgba(30,30,50,0.78);
+    border: 1px solid rgba(0,0,0,0.10);
+  }
+
+  /* GPU 레이어 승격: transform 애니메이션 성능 최적화 */
+  .tbox {
+    will-change: transform;
+  }
+
+</style>
+</head>
+<body>
+
+<canvas id="drawCanvas"></canvas>
+
+<!-- 텍스트 박스 레이어 -->
+<div id="textObjectLayer"></div>
+
+<!-- 드래그 생성 미리보기 -->
+<div id="tboxPreview"></div>
+
+<!-- 툴바 -->
+<div class="toolbar" id="toolbar">
+
+  <button class="tool-btn active" id="btnPen">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+    </svg>
+  </button>
+
+  <button class="tool-btn" id="btnLine">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <line x1="5" y1="19" x2="19" y2="5"/>
+    </svg>
+  </button>
+
+  <button class="tool-btn" id="btnRect">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="3" y="3" width="18" height="18" rx="2"/>
+    </svg>
+  </button>
+
+  <button class="tool-btn" id="btnCircle">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="9"/>
+    </svg>
+  </button>
+
+  <button class="tool-btn" id="btnEraser">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <path d="M20 20H7L3 16l11-11 6 6-1.5 1.5"/><path d="M6.5 17.5l5-5"/>
+    </svg>
+  </button>
+
+  <button class="tool-btn" id="btnText">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <polyline points="4 7 4 4 20 4 20 7"/>
+      <line x1="9" y1="20" x2="15" y2="20"/>
+      <line x1="12" y1="4" x2="12" y2="20"/>
+    </svg>
+  </button>
+
+  <div class="sep"></div>
+
+  <div class="size-wrap">
+    <div class="size-dot" id="sizeDot" style="width:6px;height:6px"></div>
+    <input type="range" id="rangeSize" min="1" max="40" value="4">
+  </div>
+
+  <div class="sep"></div>
+
+  <div class="palette" id="palette">
+    <div class="color-swatch active" data-color="#FF3B30" style="background:#FF3B30"></div>
+    <div class="color-swatch"        data-color="#FF9F0A" style="background:#FF9F0A"></div>
+    <div class="color-swatch"        data-color="#FFD60A" style="background:#FFD60A"></div>
+    <div class="color-swatch"        data-color="#30D158" style="background:#30D158"></div>
+    <div class="color-swatch"        data-color="#0A84FF" style="background:#0A84FF"></div>
+    <div class="color-swatch"        data-color="#FFFFFF" style="background:#FFFFFF;border:1px solid rgba(255,255,255,0.3)"></div>
+    <div class="color-picker-wrap">
+      <div class="color-picker-btn" id="colorPickerBtn">+</div>
+      <input type="color" id="colorPicker" value="#7C6CF8">
+    </div>
+  </div>
+
+  <div class="sep"></div>
+
+  <div class="opacity-wrap">
+    <span class="opacity-lbl" id="opacityLbl"></span>
+    <input type="range" class="opacity-range" id="rangeOpacity" min="10" max="100" value="100">
+  </div>
+
+  <div class="sep"></div>
+
+  <button class="tool-btn" id="btnUndo">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 00-4-4H4"/>
+    </svg>
+  </button>
+
+  <button class="tool-btn" id="btnClear">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+      <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+    </svg>
+  </button>
+
+  <div class="sep"></div>
+
+  <button class="btn-close-drawing" id="btnCloseDraw">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  </button>
+
+</div>
+
+<script src="./index.js"></script>
+</body>
+</html>

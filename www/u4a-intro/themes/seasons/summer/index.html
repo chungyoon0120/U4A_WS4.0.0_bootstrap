@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>U4A Intro Platform</title>
+
+    <style>
+        /* ── 폰트 로컬 폴백 ── */
+        @font-face {
+            font-family: 'Montserrat';
+            font-weight: 800 900;
+            font-style: normal;
+            src: local('Montserrat ExtraBold'), local('Montserrat-ExtraBold'),
+                 local('Montserrat Bold'),      local('Montserrat-Bold');
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background: transparent !important; 
+            display: flex; justify-content: center; align-items: center;
+            font-family: 'Montserrat', 'Arial Black', 'Impact', sans-serif;
+            -webkit-app-region: drag;
+        }
+
+        .video-box {
+            position: relative;
+            width: 90vw; 
+            /* height: 100vh; */
+            display: flex; justify-content: center; align-items: center;
+            z-index: 150;
+        }
+
+
+        video {
+            /* 크기 */
+            width: 80%;
+            height: 80%;
+            object-fit: contain;
+
+            /* 가장자리 페이드 마스크 */
+            --mask-radial : radial-gradient(ellipse at center, black 55%, transparent 85%);
+            --mask-horiz  : linear-gradient(to right,  transparent 0%, black 20%, black 80%, transparent 100%);
+            --mask-vert   : linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+
+            -webkit-mask-image    : var(--mask-radial), var(--mask-horiz), var(--mask-vert);
+                    mask-image    : var(--mask-radial), var(--mask-horiz), var(--mask-vert);
+            -webkit-mask-composite: source-in;
+                    mask-composite: intersect;
+
+            /* 등장 애니메이션 */
+            opacity  : 0;
+            animation: videoIn 1s ease-out forwards;
+
+            /* fade-out용 transition */
+            transition: opacity 1.8s ease, transform 1.8s ease;
+
+            -webkit-app-region: no-drag;
+        }
+
+
+
+        @keyframes videoIn { 
+            /* 0%   { opacity: 0; filter: blur(20px); }
+            100% { opacity: 1; filter: blur(0px); } */
+            0%   { opacity: 0; }
+            100% { opacity: 1; }
+
+        }
+
+        /* 텍스트 레이어 */
+        .text-layer {
+            position: absolute;
+            top: 52%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 30;
+            display: flex;
+            flex-direction: column; /* 세로로 배치 */
+            align-items: center;    /* 가로축 중앙 정렬 */
+            justify-content: center;
+            gap: 15px;             /* 문구와 버전 사이 간격 */
+
+            white-space: nowrap;
+            opacity: 0;
+            /* filter: blur(12px); */
+
+            /* ✅ 이 두 줄 추가 — GPU 레이어 미리 분리 */
+            will-change: opacity, transform, filter;
+            backface-visibility: hidden;
+
+            transition:
+                opacity   2.2s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 2.4s cubic-bezier(0.22, 1, 0.36, 1),
+                filter    2.0s cubic-bezier(0.22, 1, 0.36, 1);
+            pointer-events: none;
+        }
+
+        .text-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;    /* 가로 중앙 정렬 */
+            justify-content: center;
+            gap: 2px;              /* [중요] 메인 문구와 버전 사이 간격을 아주 가깝게 조절 */
+            text-align: center;
+        }
+
+        .text-layer.active {
+            opacity: 1;
+            transform: translate(-50%, -50%);
+            /* filter: blur(0px); */
+        }
+
+        .text-layer.exit {
+            opacity: 0;
+            transform: translate(-50%, -47%);
+            /* filter: blur(25px); */
+            transition: all 1s ease-in;
+        }
+
+        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+           네온 사인 ON / OFF 키프레임
+           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+        @keyframes neon-purple {
+            0%   { text-shadow: 0 2px 0 rgba(255,255,255,0.25), 0 6px 18px rgba(0,0,0,0.6), 0 0 35px rgba(208,0,255,0.85), 0 0 70px rgba(208,0,255,0.50), 0 0 120px rgba(208,0,255,0.20); }
+            72%  { text-shadow: 0 2px 0 rgba(255,255,255,0.25), 0 6px 18px rgba(0,0,0,0.6), 0 0 35px rgba(208,0,255,0.85), 0 0 70px rgba(208,0,255,0.50), 0 0 120px rgba(208,0,255,0.20); }
+            78%  { text-shadow: 0 2px 0 rgba(255,255,255,0.10), 0 6px 18px rgba(0,0,0,0.7), 0 0 8px rgba(208,0,255,0.20), 0 0 0px rgba(208,0,255,0); }
+            82%  { text-shadow: 0 2px 0 rgba(255,255,255,0.05), 0 6px 18px rgba(0,0,0,0.8), 0 0 2px rgba(208,0,255,0.08); }
+            88%  { text-shadow: 0 2px 0 rgba(255,255,255,0.25), 0 6px 18px rgba(0,0,0,0.6), 0 0 35px rgba(208,0,255,0.85), 0 0 70px rgba(208,0,255,0.50), 0 0 120px rgba(208,0,255,0.20); }
+            100% { text-shadow: 0 2px 0 rgba(255,255,255,0.25), 0 6px 18px rgba(0,0,0,0.6), 0 0 35px rgba(208,0,255,0.85), 0 0 70px rgba(208,0,255,0.50), 0 0 120px rgba(208,0,255,0.20); }
+        }
+
+        @keyframes neon-blue {
+            0%   { text-shadow: 0 2px 0 rgba(255,255,255,0.25), 0 6px 18px rgba(0,0,0,0.6), 0 0 35px rgba(0,123,255,0.85), 0 0 70px rgba(0,123,255,0.50), 0 0 120px rgba(0,123,255,0.20); }
+            60%  { text-shadow: 0 2px 0 rgba(255,255,255,0.25), 0 6px 18px rgba(0,0,0,0.6), 0 0 35px rgba(0,123,255,0.85), 0 0 70px rgba(0,123,255,0.50), 0 0 120px rgba(0,123,255,0.20); }
+            66%  { text-shadow: 0 2px 0 rgba(255,255,255,0.10), 0 6px 18px rgba(0,0,0,0.7), 0 0 8px rgba(0,123,255,0.20); }
+            70%  { text-shadow: 0 2px 0 rgba(255,255,255,0.05), 0 6px 18px rgba(0,0,0,0.8), 0 0 2px rgba(0,123,255,0.08); }
+            76%  { text-shadow: 0 2px 0 rgba(255,255,255,0.25), 0 6px 18px rgba(0,0,0,0.6), 0 0 35px rgba(0,123,255,0.85), 0 0 70px rgba(0,123,255,0.50), 0 0 120px rgba(0,123,255,0.20); }
+            100% { text-shadow: 0 2px 0 rgba(255,255,255,0.25), 0 6px 18px rgba(0,0,0,0.6), 0 0 35px rgba(0,123,255,0.85), 0 0 70px rgba(0,123,255,0.50), 0 0 120px rgba(0,123,255,0.20); }
+        }
+
+        @keyframes neon-white {
+            0%   { text-shadow: 0 2px 0 rgba(0,0,0,0.4), 0 6px 16px rgba(0,0,0,0.7), 0 0 20px rgba(255,255,255,0.55), 0 0 50px rgba(255,255,255,0.20); }
+            80%  { text-shadow: 0 2px 0 rgba(0,0,0,0.4), 0 6px 16px rgba(0,0,0,0.7), 0 0 20px rgba(255,255,255,0.55), 0 0 50px rgba(255,255,255,0.20); }
+            85%  { text-shadow: 0 2px 0 rgba(0,0,0,0.5), 0 6px 16px rgba(0,0,0,0.8), 0 0 4px rgba(255,255,255,0.15); }
+            90%  { text-shadow: 0 2px 0 rgba(0,0,0,0.5), 0 6px 16px rgba(0,0,0,0.9), 0 0 1px rgba(255,255,255,0.05); }
+            95%  { text-shadow: 0 2px 0 rgba(0,0,0,0.4), 0 6px 16px rgba(0,0,0,0.7), 0 0 20px rgba(255,255,255,0.55), 0 0 50px rgba(255,255,255,0.20); }
+            100% { text-shadow: 0 2px 0 rgba(0,0,0,0.4), 0 6px 16px rgba(0,0,0,0.7), 0 0 20px rgba(255,255,255,0.55), 0 0 50px rgba(255,255,255,0.20); }
+        }
+
+        @keyframes neon-gradient {
+            0%   { opacity: 1;    filter: brightness(1)   drop-shadow(0 0 18px rgba(180,0,255,0.55)) drop-shadow(0 0 40px rgba(0,80,255,0.35)); }
+            65%  { opacity: 1;    filter: brightness(1)   drop-shadow(0 0 18px rgba(180,0,255,0.55)) drop-shadow(0 0 40px rgba(0,80,255,0.35)); }
+            71%  { opacity: 0.55; filter: brightness(0.7) drop-shadow(0 0 4px rgba(180,0,255,0.15)); }
+            75%  { opacity: 0.35; filter: brightness(0.5) drop-shadow(0 0 1px rgba(180,0,255,0.05)); }
+            80%  { opacity: 1;    filter: brightness(1)   drop-shadow(0 0 18px rgba(180,0,255,0.55)) drop-shadow(0 0 40px rgba(0,80,255,0.35)); }
+            100% { opacity: 1;    filter: brightness(1)   drop-shadow(0 0 18px rgba(180,0,255,0.55)) drop-shadow(0 0 40px rgba(0,80,255,0.35)); }
+        }
+
+        @keyframes neon-patch {
+            0%   { opacity: 1;   text-shadow: 0 0 14px rgba(192,0,255,0.60), 0 0 35px rgba(192,0,255,0.25), 0 1px 2px rgba(0,0,0,0.7); }
+            70%  { opacity: 1;   text-shadow: 0 0 14px rgba(192,0,255,0.60), 0 0 35px rgba(192,0,255,0.25), 0 1px 2px rgba(0,0,0,0.7); }
+            74%  { opacity: 0.5; text-shadow: 0 0 4px rgba(192,0,255,0.15), 0 1px 2px rgba(0,0,0,0.8); }
+            78%  { opacity: 0.2; text-shadow: 0 0 1px rgba(192,0,255,0.05), 0 1px 2px rgba(0,0,0,0.9); }
+            82%  { opacity: 1;   text-shadow: 0 0 14px rgba(192,0,255,0.60), 0 0 35px rgba(192,0,255,0.25), 0 1px 2px rgba(0,0,0,0.7); }
+            100% { opacity: 1;   text-shadow: 0 0 14px rgba(192,0,255,0.60), 0 0 35px rgba(192,0,255,0.25), 0 1px 2px rgba(0,0,0,0.7); }
+        }
+
+        /* 개별 요소 스타일 */
+        .logo-ws .w {
+            font-size: 250px;
+            color: #d000ff;
+            letter-spacing: -12px;
+            z-index: 2;
+            text-shadow: 0 2px 0 rgba(255,255,255,0.25), 0 6px 18px rgba(0,0,0,0.6), 0 0 35px rgba(208,0,255,0.85), 0 0 70px rgba(208,0,255,0.50), 0 0 120px rgba(208,0,255,0.20);
+            animation: neon-purple 7s ease-in-out infinite;
+        }
+
+        .logo-ws .s {
+            font-size: 200px;
+            color: #007bff;
+            margin-left: -35px;
+            margin-bottom: 5px;
+            z-index: 1;
+            text-shadow: 0 2px 0 rgba(255,255,255,0.25), 0 6px 18px rgba(0,0,0,0.6), 0 0 35px rgba(0,123,255,0.85), 0 0 70px rgba(0,123,255,0.50), 0 0 120px rgba(0,123,255,0.20);
+            animation: neon-blue 9s ease-in-out infinite;
+            animation-delay: 1.5s;
+        }
+
+        .text-line-1 {
+            font-size: 136px;
+            font-weight: 800;
+            color: #ffffff;
+            line-height: 1;
+            margin-bottom: -10px;
+            text-shadow: 0 2px 0 rgba(0,0,0,0.4), 0 6px 16px rgba(0,0,0,0.7), 0 0 20px rgba(255,255,255,0.55), 0 0 50px rgba(255,255,255,0.20);
+            animation: neon-white 11s ease-in-out infinite;
+            animation-delay: 3s;
+        }
+
+        .text-line-2 { 
+            font-size: 3.5rem; 
+            font-weight: 900; 
+            background: linear-gradient(to right, #c000ff, #0066ff);
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: neon-gradient 8s ease-in-out infinite;
+            animation-delay: 2s;
+            letter-spacing: -1.5px;
+            line-height: 1;
+        }
+
+        .workspace-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 28px;
+        }
+
+        .version-row {
+            margin-top: 18px;
+            display: flex;
+            gap: 40px;
+            /* font-size: 60px; */
+            font-size: 1.2rem;
+            font-weight: 600;
+            opacity: 0.9;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+
+        .ver-major {
+            color: #e6ebff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.7), 0 0 8px rgba(120,140,255,0.25);
+        }
+
+        .ver-patch {
+            color: #c000ff;
+            text-shadow: 0 0 14px rgba(192,0,255,0.60), 0 0 35px rgba(192,0,255,0.25), 0 1px 2px rgba(0,0,0,0.7);
+            animation: neon-patch 6.5s ease-in-out infinite;
+            animation-delay: 0.8s;
+        }
+
+        /* active 전 애니메이션 일시정지 */
+        .text-layer:not(.active) .w,
+        .text-layer:not(.active) .s,
+        .text-layer:not(.active) .text-line-1,
+        .text-layer:not(.active) .text-line-2,
+        .text-layer:not(.active) .ver-patch {
+            animation-play-state: paused;
+        }
+
+        /* body 전체 페이드아웃 */
+        body.fade-out {
+            animation: bodyOut 2.0s ease forwards;
+        }
+
+        @keyframes bodyOut {
+            0%   { opacity: 1; }
+            /* 30%  { opacity: 1; } */
+            100% { opacity: 0; }
+        }
+
+        /* 반응형 */
+        .logo-ws .w { font-size: clamp(120px, 14vw, 260px); }
+        .logo-ws .s { font-size: clamp(100px, 12vw, 220px); }
+        .text-line-1 { font-size: clamp(64px, 7vw, 140px); }
+        .text-line-2 { font-size: clamp(64px, 7vw, 140px); }
+        .version-row { font-size: clamp(22px, 2.2vw, 60px); }
+
+    </style>
+</head>
+<body>
+
+    <div class="video-box">
+        <video id="introVideo" autoplay muted playsinline preload="auto">
+            <!-- <source src="img/intro.mp4" type="video/mp4"> -->
+             <!-- <source src="img/intro_w.webm" type="video/webm"> -->
+             <source src="img/intro.mp4" type="video/mp4">
+             <!-- <source src="img/intro.mp4" type="video/mp4"> -->
+            <!-- <source src="img/intro_w_fix.mp4" type="video/mp4"> -->
+        </video>
+        
+        <div class="text-layer" id="textLayer">
+            <div class="text-group">
+                <div class="text-line-2">U4A Workspace</div>
+                <div class="version-row">
+                    <span class="ver-major">Release Ver </span>
+                    <span class="ver-patch">Patch Level </span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const textLayer = document.getElementById('textLayer');
+        const video     = document.getElementById('introVideo');
+
+        function getParams(){
+            const params = new URLSearchParams(window.location.search);
+            const raw = params.get("params");
+            if (!raw) return {};
+            try {
+                return JSON.parse(decodeURIComponent(raw));
+            } catch {
+                return {};
+            }
+        }
+
+        function fadeOutVideo() {
+            // 1. videoIn(forwards)이 잡고 있는 스타일을 인라인으로 고정
+            video.style.opacity   = getComputedStyle(video).opacity;
+            video.style.filter    = getComputedStyle(video).filter;
+            video.style.transform = getComputedStyle(video).transform;
+
+            // 2. animation 제거 → forwards 지배 해제
+            video.style.animation = 'none';
+
+            // 3. 두 프레임 후 목표값 설정 → transition이 부드럽게 보간
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    video.style.opacity   = '0';
+                    // video.style.filter    = 'blur(12px)';
+                    video.style.transform = 'scale(1.08)';
+                });
+            });
+        }
+
+        video.addEventListener('playing', () => {
+
+            const _params = getParams();
+            document.querySelector('.ver-major').innerText = `Release Ver ${_params.versn}`;
+            document.querySelector('.ver-patch').innerText = `Patch Level ${_params.splev}`;
+
+            // [1.5초] 텍스트 등장
+            setTimeout(() => textLayer.classList.add('active'), 1500);
+
+            // [6초] 비디오 서서히 사라짐
+            setTimeout(() => fadeOutVideo(), 5000);
+
+        });
+
+
+        const { ipcRenderer } = require('electron');
+
+        ipcRenderer.on('win:request-close', (event, data) => {
+            document.body.classList.add('fade-out');
+            document.body.addEventListener('animationend', () => {
+                window.close();
+            }, { once: true });
+        });
+
+        document.addEventListener('DOMContentLoaded', function () { 
+            const _params = getParams();
+            // if(_params.devTools === true){ window.onclick = ()=>{ window.close(); }; }
+        });
+
+    </script>
+</body>
+</html>

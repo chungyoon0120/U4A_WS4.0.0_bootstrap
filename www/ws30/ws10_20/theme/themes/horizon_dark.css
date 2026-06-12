@@ -1,0 +1,38 @@
+/************************************************************************
+ * 테마: dark — sap_horizon_dark 이식
+ * 배경·텍스트·경계·강조 + 6.6 표면 색까지 override (doc 12 §4.1 Layer3)
+ ************************************************************************/
+[data-theme="horizon_dark"] {
+    --app-bg: var(--c-bg-dark);
+    --surface: var(--c-surface-dark);
+    --surface-raised: #2a323a;
+    --text: var(--c-text-dark);
+    --text-muted: #a9b4be;
+    --line: var(--c-line-dark);
+    --accent: #1c93f2;
+    --accent-strong: #5dc6ff;
+
+    /* dark 는 색 표면도 함께 override (체크리스트 표면 누락 방지) */
+    --hover-bg: rgba(255, 255, 255, .06);
+    --active-bg: rgba(255, 255, 255, .12);
+    --selected-bg: rgba(29, 147, 242, .30);
+    --disabled-bg: #1c2228;
+    --disabled-text: #6b7782;
+
+    --state-error-bg: #3a1a1d;
+    --state-warning-bg: #3a2e12;
+    --state-success-bg: #10301d;
+    --state-info-bg: #10283a;
+
+    --scrollbar-thumb: #3a444e;
+    --scrollbar-thumb-hover: #4d5a66;
+
+    --overlay-scrim: rgba(0, 0, 0, .6);
+    --popover-bg: #1c2228;
+    --popover-shadow: 0 0.5rem 2rem rgba(0, 0, 0, .5);
+
+    --placeholder: #6b7782;
+    --selection-bg: rgba(29, 147, 242, .30);
+
+    --titlebar-bg: var(--surface);
+}

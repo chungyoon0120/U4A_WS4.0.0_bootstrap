@@ -1,0 +1,72 @@
+html,body {
+    height: 100%;    
+}
+body {
+    margin: 0px;    
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+.serverList {
+  color: white;
+  background: #444753;
+  border-radius: 5px;
+  padding: 20px;
+  height: 770px;
+  width: 260px;
+  float: left;
+  overflow-y: auto;
+}
+.name {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+*, *:before, *:after {
+  box-sizing: border-box;
+}
+ol, ul {
+list-style: none;
+}
+.serverList ul {
+  padding: 20px;
+  height: 770px;       
+}
+.serverList li {      
+  margin-bottom: 10px;
+  border-bottom: 1px solid #fff;
+  border-top: 1px solid #fff;
+  padding-bottom: 10px;
+  cursor: pointer;
+}
+.serverList li::after {
+  visibility: hidden;
+  display: block;
+  font-size: 0;
+  content: " ";
+  clear: both;
+  height: 0;
+}
+div, ul, li {
+  margin: 0;
+  padding: 0;        
+  border: 0;
+  font-size: 100%;
+  vertical-align: baseline;
+}
+
+
+
+/**
+ * @since   2026-01-05 13:56:47
+ * @version v3.5.7-4
+ * @author  soccerhs
+ * @description
+ *   Dialog Header 영역에 버튼 제외한 나머지 포인터 이벤트 해제
+ *   - 사유: 기본적으로 Dialog Header는 Drag 영역인데 텍스트 등이 있으면 드래그가 안되므로
+ *     버튼을 제외한 나머지는 클릭 이벤트를 방지하면 드래그가 정상 동작함.
+ */
+.sapMDialog .sapMIBar *:not(.sapMBtn):not(.sapMBtn *) {
+    pointer-events: none;
+}

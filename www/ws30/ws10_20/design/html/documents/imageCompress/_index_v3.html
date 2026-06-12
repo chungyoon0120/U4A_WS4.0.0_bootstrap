@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>도움말 템플릿</title>
+  <style>
+
+    /* =====================================================
+     * CSS Variables
+     * ===================================================== */
+    :root {
+      /* 기본 색상 */
+      --bg:            #0b1220;
+      --bg-deep:       #060d1a;
+      --surface:       #0f1b2f;
+      --surface2:      #1c2030;
+      --border:        #243553;
+      --text:          #e7eefc;
+      --text-muted:    #a9b8d6;
+      --text-faint:    #647891;
+      --accent:        #4aa3ff;
+      --accent-dim:    rgba(74,163,255,.12);
+      --accent-glow:   rgba(74,163,255,.25);
+      --green:         #00e5a0;
+      --green-dim:     rgba(0,229,160,.12);
+      --orange:        #ff8c42;
+      --orange-dim:    rgba(255,140,66,.12);
+      --red:           #ff5c5c;
+      --red-dim:       rgba(255,92,92,.12);
+      --shadow-card:   0 8px 28px rgba(0,0,0,.28);
+
+      /* 헤더 */
+      --header-bg:     linear-gradient(135deg, #0d1525 0%, #0d1a2e 50%, #101520 100%);
+      --header-glow:   rgba(74,163,255,.08);
+
+      /* 코드 */
+      --code-bg:       rgba(74,163,255,.08);
+      --code-border:   rgba(74,163,255,.18);
+      --code-text:     #7dd3fc;
+      --pre-bg:        #090f1c;
+      --pre-border:    #1e2f47;
+
+      /* 표 */
+      --table-head-bg:   rgba(74,163,255,.1);
+      --table-row-even:  rgba(255,255,255,.02);
+      --table-row-hover: rgba(74,163,255,.06);
+
+      /* 인용 */
+      --blockquote-border: #4aa3ff;
+      --blockquote-bg:     rgba(74,163,255,.05);
+
+      /* Note / Callout */
+      --note-border:    #4aa3ff;
+      --note-bg:        rgba(74,163,255,.07);
+      --warn-border:    #ff8c42;
+      --warn-bg:        rgba(255,140,66,.07);
+      --success-border: #00e5a0;
+      --success-bg:     rgba(0,229,160,.07);
+      --danger-border:  #ff5c5c;
+      --danger-bg:      rgba(255,92,92,.07);
+
+      /* 배지 */
+      --badge-bg:     rgba(74,163,255,.12);
+      --badge-border: rgba(74,163,255,.3);
+      --badge-text:   #4aa3ff;
+
+      /* 스크롤바 */
+      --scrollbar-thumb: #647891;
+    }
+
+    /* ===== Light Mode ===== */
+    body.light-mode {
+      --bg:            #f5f7fa;
+      --bg-deep:       #eaecf2;
+      --surface:       #ffffff;
+      --surface2:      #f0f2f7;
+      --border:        #dde1ea;
+      --text:          #101828;
+      --text-muted:    #475467;
+      --text-faint:    #98a2b3;
+      --accent:        #2563eb;
+      --accent-dim:    rgba(37,99,235,.08);
+      --accent-glow:   rgba(37,99,235,.2);
+      --green:         #059669;
+      --green-dim:     rgba(5,150,105,.08);
+      --orange:        #dc6803;
+      --orange-dim:    rgba(220,104,3,.08);
+      --red:           #dc2626;
+      --red-dim:       rgba(220,38,38,.08);
+      --shadow-card:   0 4px 16px rgba(16,24,40,.1);
+
+      --header-bg:     linear-gradient(135deg, #dbeafe 0%, #eff6ff 50%, #f0f9ff 100%);
+      --header-glow:   rgba(37,99,235,.08);
+
+      --code-bg:       rgba(37,99,235,.06);
+      --code-border:   rgba(37,99,235,.15);
+      --code-text:     #1d4ed8;
+      --pre-bg:        #f8faff;
+      --pre-border:    #dde1ea;
+
+      --table-head-bg:   rgba(37,99,235,.07);
+      --table-row-even:  rgba(0,0,0,.02);
+      --table-row-hover: rgba(37,99,235,.04);
+
+      --blockquote-border: #2563eb;
+      --blockquote-bg:     rgba(37,99,235,.04);
+
+      --note-border:    #2563eb;
+      --note-bg:        rgba(37,99,235,.05);
+      --warn-border:    #dc6803;
+      --warn-bg:        rgba(220,104,3,.05);
+      --success-border: #059669;
+      --success-bg:     rgba(5,150,105,.05);
+      --danger-border:  #dc2626;
+      --danger-bg:      rgba(220,38,38,.05);
+
+      --badge-bg:     rgba(37,99,235,.08);
+      --badge-border: rgba(37,99,235,.25);
+      --badge-text:   #2563eb;
+
+      --scrollbar-thumb: #c0c8d8;
+    }
+
+
+    /* =====================================================
+     * Reset & Base
+     * ===================================================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Pretendard', 'Apple SD Gothic Neo', system-ui, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.75;
+      min-height: 100vh;
+      transition: background .2s, color .2s;
+      padding : 10px;
+    }
+
+    /* 언어 전환 페이드 마스크 */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--bg);
+      opacity: .55;
+      pointer-events: none;
+      transition: opacity .4s ease;
+    }
+    body.lang-ready::after { opacity: 0; }
+
+
+    /* =====================================================
+     * Scrollbar
+     * ===================================================== */
+    ::-webkit-scrollbar        { width: 16px; height: 16px; }
+    ::-webkit-scrollbar-track  { background: var(--bg); }
+    ::-webkit-scrollbar-thumb  {
+      background: var(--scrollbar-thumb);
+      border: 3px solid var(--bg);
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover { filter: brightness(1.2); }
+    ::-webkit-scrollbar-corner { background: var(--bg); }
+
+
+    /* =====================================================
+     * Layout Wrapper  (#pandoc-content)
+     * ===================================================== */
+    #pandoc-content {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+    }
+
+
+    /* =====================================================
+     * [1] Headings  H1 ~ H6
+     * ===================================================== */
+    #pandoc-content h1,
+    #pandoc-content h2,
+    #pandoc-content h3,
+    #pandoc-content h4,
+    #pandoc-content h5,
+    #pandoc-content h6 {
+      font-weight: 700;
+      line-height: 1.35;
+      color: var(--text);
+      margin: 2em 0 .65em;
+    }
+    #pandoc-content :is(h1,h2,h3,h4,h5,h6):first-child { margin-top: 0; }
+
+    /* H1 */
+    #pandoc-content h1 {
+      font-size: 22px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--border);
+      position: relative;
+    }
+    #pandoc-content h1::after {
+      content: '';
+      position: absolute; left: 0; bottom: -2px;
+      width: 52px; height: 2px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+
+    /* H2 */
+    #pandoc-content h2 {
+      font-size: 17px;
+      color: var(--accent);
+      display: flex; align-items: center; gap: 10px;
+    }
+    #pandoc-content h2::after {
+      content: '';
+      flex: 1; height: 1px;
+      background: linear-gradient(90deg, var(--border), transparent);
+    }
+
+    /* H3 */
+    #pandoc-content h3 {
+      font-size: 15px;
+      padding-left: 10px;
+      border-left: 3px solid var(--accent);
+    }
+
+    /* H4 */
+    #pandoc-content h4 {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    #pandoc-content h4::before {
+      content: '◆ ';
+      color: var(--accent);
+      font-size: 10px;
+      vertical-align: middle;
+    }
+
+    /* H5 */
+    #pandoc-content h5 {
+      font-size: 12.5px;
+      text-transform: uppercase;
+      letter-spacing: .09em;
+      color: var(--text-faint);
+    }
+
+    /* H6 */
+    #pandoc-content h6 {
+      font-size: 12px;
+      color: var(--text-faint);
+      font-style: italic;
+    }
+
+
+    /* =====================================================
+     * [2] Paragraph & Inline Text
+     * ===================================================== */
+    #pandoc-content p {
+      font-size: 14px;
+      color: var(--text);
+      margin: 0 0 .9em;
+    }
+    #pandoc-content p:last-child { margin-bottom: 0; }
+
+    /* Bold */
+    #pandoc-content strong,
+    #pandoc-content b { font-weight: 700; color: var(--text); }
+
+    /* Italic */
+    #pandoc-content em,
+    #pandoc-content i { font-style: italic; color: var(--text-muted); }
+
+    /* Strikethrough */
+    #pandoc-content del,
+    #pandoc-content s { text-decoration: line-through; color: var(--text-faint); }
+
+    /* Inline Code */
+    #pandoc-content code {
+      font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 12.5px;
+      background: var(--code-bg);
+      color: var(--code-text);
+      border: 1px solid var(--code-border);
+      border-radius: 4px;
+      padding: 1px 6px;
+    }
+
+    /* Link */
+    #pandoc-content a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color .15s, opacity .15s;
+    }
+    #pandoc-content a:hover {
+      border-bottom-color: var(--accent);
+      opacity: .8;
+    }
+
+    /* Mark */
+    #pandoc-content mark {
+      background: rgba(74,163,255,.22);
+      color: var(--text);
+      border-radius: 3px;
+      padding: 0 4px;
+    }
+    body.light-mode #pandoc-content mark {
+      background: rgba(37,99,235,.14);
+    }
+
+    /* Sup / Sub */
+    #pandoc-content sup { font-size: .75em; vertical-align: super; }
+    #pandoc-content sub { font-size: .75em; vertical-align: sub; }
+
+    /* Span 클래스 */
+    #pandoc-content .accent { color: var(--accent); }
+    #pandoc-content .muted  { color: var(--text-muted); }
+    #pandoc-content .faint  { color: var(--text-faint); }
+    #pandoc-content .green  { color: var(--green); }
+    #pandoc-content .orange { color: var(--orange); }
+    #pandoc-content .red    { color: var(--red); }
+
+
+    /* =====================================================
+     * [3] Blockquote
+     * ===================================================== */
+    #pandoc-content blockquote {
+      margin: 1.2em 0;
+      padding: 12px 16px;
+      border-left: 4px solid var(--blockquote-border);
+      background: var(--blockquote-bg);
+      border-radius: 0 8px 8px 0;
+      color: var(--text-muted);
+      font-size: 13.5px;
+    }
+    #pandoc-content blockquote p {
+      margin: 0;
+      color: var(--text-muted);
+    }
+    /* 중첩 인용 */
+    #pandoc-content blockquote blockquote {
+      margin-top: 8px;
+      border-left-color: var(--text-faint);
+      background: transparent;
+    }
+
+
+    /* =====================================================
+     * [4] Lists  (ul / ol / task / dl)
+     * ===================================================== */
+    #pandoc-content ul,
+    #pandoc-content ol {
+      margin: .6em 0 1em 1.4em;
+      padding-left: .4em;
+    }
+    #pandoc-content li {
+      font-size: 14px;
+      color: var(--text);
+      margin-bottom: .3em;
+    }
+
+    /* Unordered bullet 색상 */
+    #pandoc-content ul > li::marker { color: var(--accent); }
+
+    /* Ordered number 색상 */
+    #pandoc-content ol > li::marker {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    /* 중첩 */
+    #pandoc-content ul ul,
+    #pandoc-content ol ol,
+    #pandoc-content ul ol,
+    #pandoc-content ol ul { margin: .2em 0 .2em 1.2em; }
+
+    /* Task list (체크박스) */
+    #pandoc-content ul.task-list {
+      list-style: none;
+      padding-left: .2em;
+    }
+    #pandoc-content .task-list-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    #pandoc-content .task-list-item input[type="checkbox"] {
+      margin-top: 3px;
+      flex-shrink: 0;
+      width: 15px; height: 15px;
+      accent-color: var(--accent);
+    }
+
+    /* Definition list */
+    #pandoc-content dl { margin: .8em 0; }
+    #pandoc-content dt {
+      font-weight: 700;
+      color: var(--accent);
+      font-size: 13.5px;
+      margin-top: .7em;
+    }
+    #pandoc-content dd {
+      margin-left: 1.4em;
+      color: var(--text-muted);
+      font-size: 13.5px;
+    }
+
+
+    /* =====================================================
+     * [5] Code Block  (pre > code)
+     * ===================================================== */
+    #pandoc-content pre {
+      margin: 1.2em 0;
+      padding: 16px 18px;
+      background: var(--pre-bg);
+      border: 1px solid var(--pre-border);
+      border-radius: 10px;
+      overflow-x: auto;
+      position: relative;
+    }
+    #pandoc-content pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 13px;
+      color: var(--text-muted);
+      border-radius: 0;
+    }
+    /* 언어 레이블 */
+    #pandoc-content div.sourceCode::before {
+      content: attr(data-lang);
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      margin-bottom: 8px;
+    }
+
+
+    /* =====================================================
+     * [6] Table
+     * ===================================================== */
+    #pandoc-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.2em 0;
+      font-size: 13.5px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    #pandoc-content thead tr {
+      background: var(--table-head-bg);
+    }
+    #pandoc-content th {
+      padding: 10px 14px;
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: var(--accent);
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+    #pandoc-content td {
+      padding: 9px 14px;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    #pandoc-content tr:last-child td { border-bottom: none; }
+    #pandoc-content tbody tr:nth-child(even) { background: var(--table-row-even); }
+    #pandoc-content tbody tr:hover           { background: var(--table-row-hover); }
+
+
+    /* =====================================================
+     * [7] Horizontal Rule
+     * ===================================================== */
+    #pandoc-content hr {
+      border: none;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 2em 0;
+    }
+
+
+    /* =====================================================
+     * [8] Image / Figure
+     * ===================================================== */
+    #pandoc-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      display: block;
+      margin: 1em auto;
+    }
+    #pandoc-content figure { margin: 1.2em 0; text-align: center; }
+    #pandoc-content figcaption {
+      font-size: 12px;
+      color: var(--text-faint);
+      margin-top: 6px;
+      font-style: italic;
+    }
+
+
+    /* =====================================================
+     * [9] Footnote
+     * ===================================================== */
+    #pandoc-content .footnotes {
+      margin-top: 2.4em;
+      padding-top: 1.2em;
+      border-top: 1px solid var(--border);
+      font-size: 12.5px;
+      color: var(--text-muted);
+    }
+    #pandoc-content .footnotes ol { margin-left: 1em; }
+    #pandoc-content .footnotes li { margin-bottom: .4em; }
+    #pandoc-content a.footnote-ref {
+      font-size: 11px;
+      font-weight: 700;
+      vertical-align: super;
+      color: var(--accent);
+    }
+    #pandoc-content a.footnote-back { color: var(--text-faint); }
+
+
+    /* =====================================================
+     * [10] Math
+     * ===================================================== */
+    #pandoc-content .math { color: var(--text); overflow-x: auto; }
+    #pandoc-content .math.display {
+      display: block;
+      padding: 14px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin: 1.2em 0;
+      text-align: center;
+    }
+
+
+    /* =====================================================
+     * [11] Fenced Div 컴포넌트 클래스
+     *      Pandoc ::: {.클래스명} ... ::: 으로 사용
+     * ===================================================== */
+
+    /* ── .card ── 기본 카드 */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 20px;
+      box-shadow: var(--shadow-card);
+      margin: 1.2em 0;
+    }
+    .card > p:last-child { margin-bottom: 0; }
+
+    /* ── .note / .warn / .success / .danger ── Callout 박스 */
+    .note,
+    .warn,
+    .success,
+    .danger {
+      border-radius: 0 10px 10px 0;
+      padding: 11px 16px;
+      margin: 1em 0;
+      font-size: 13.5px;
+      color: var(--text-muted);
+    }
+    .note    { border-left: 4px solid var(--note-border);    background: var(--note-bg); }
+    .warn    { border-left: 4px solid var(--warn-border);    background: var(--warn-bg); }
+    .success { border-left: 4px solid var(--success-border); background: var(--success-bg); }
+    .danger  { border-left: 4px solid var(--danger-border);  background: var(--danger-bg); }
+    .note > p,
+    .warn > p,
+    .success > p,
+    .danger > p { margin: 0; color: inherit; }
+
+    /* ── .section ── 섹션 래퍼 */
+    .section { margin: 2.2em 0 0; }
+
+    /* ── .section-title ── 섹션 구분 제목 줄 */
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1; height: 1px;
+      background: linear-gradient(90deg, var(--border), transparent);
+    }
+    .section-title > p { margin: 0; color: inherit; font-size: inherit; }
+
+    /* ── .badge ── 인라인 배지 */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--badge-bg);
+      border: 1px solid var(--badge-border);
+      color: var(--badge-text);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      padding: 3px 11px;
+      border-radius: 100px;
+    }
+
+    /* ── .steps ── 단계별 목록 (ol 기반) */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      margin: 0; padding: 0;
+    }
+
+    .steps ol {
+      list-style: none;
+      counter-reset: step-counter;
+      display: flex;
+      flex-direction: column;
+      margin: 0; padding: 0;
+    }
+
+    .steps ol > li {
+      counter-increment: step-counter;
+      display: flex;
+      gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .steps ol > li:last-child { border-bottom: none; padding-bottom: 0; }
+
+    .steps ol > li::before {
+      content: counter(step-counter);
+      flex-shrink: 0;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      border: 1px solid var(--accent-glow);
+      color: var(--accent);
+      font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 2px;
+    }
+
+    .steps ol > li strong {
+      font-size: 14px; font-weight: 700;
+      display: block; margin-bottom: 4px; color: var(--text);
+    }
+    .steps ol > li p { font-size: 13.5px; color: var(--text-muted); margin: 0; }
+
+    /* ── .flow ── 처리 흐름 가로 배치 */
+    .flow {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin: 1em 0;
+      gap: 0;
+    }
+    .flow-step {
+      display: flex; align-items: center; gap: 10px;
+      flex: 1; min-width: 110px;
+    }
+    .flow-icon {
+      width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px;
+      background: var(--accent-dim);
+      border: 1px solid var(--accent-glow);
+    }
+    .flow-icon.green  { background: var(--green-dim);  border-color: rgba(0,229,160,.25); }
+    .flow-icon.orange { background: var(--orange-dim); border-color: rgba(255,140,66,.25); }
+    .flow-label { font-size: 13px; font-weight: 600; }
+    .flow-sub   { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .flow-arrow { color: var(--text-faint); font-size: 16px; padding: 0 10px; flex-shrink: 0; }
+
+    /* ── .format-tags ── 포맷 태그 나열 */
+    .format-tags { display: flex; gap: 8px; flex-wrap: wrap; margin: .8em 0; }
+    .format-tag {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 13px;
+    }
+    .format-tag-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px; font-weight: 700;
+      color: var(--accent);
+    }
+    .format-tag-desc { font-size: 12px; color: var(--text-muted); }
+
+    /* ── .img-placeholder ── 이미지 자리표시자 */
+    .img-placeholder {
+      background: var(--surface2);
+      border: 2px dashed var(--border);
+      border-radius: 14px;
+      min-height: 180px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 8px; padding: 24px; margin: 1em 0;
+      color: var(--text-faint);
+      font-size: 13px; text-align: center;
+    }
+    .img-placeholder > p { margin: 0; color: var(--text-faint); }
+
+    /* ── .size-compare ── 파일 크기 전/후 비교 */
+    .size-compare {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 12px; align-items: center;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px; margin: 1em 0;
+      text-align: center;
+    }
+    .size-before  { font-family: monospace; font-size: 22px; font-weight: 700; color: var(--orange); }
+    .size-after   { font-family: monospace; font-size: 22px; font-weight: 700; color: var(--green); }
+    .size-label   { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); margin-bottom: 4px; }
+    .size-sub     { font-size: 11px; color: var(--text-faint); margin-top: 4px; }
+    .size-arrow   { font-size: 20px; color: var(--text-faint); }
+    .size-reduction {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--green-dim);
+      border: 1px solid rgba(0,229,160,.25);
+      color: var(--green);
+      font-size: 12px; font-weight: 700;
+      padding: 3px 10px; border-radius: 100px; margin-top: 6px;
+    }
+    body.light-mode .size-reduction { border-color: rgba(5,150,105,.25); }
+
+    /* ── .coming-soon ── 준비 중 배지 */
+    .coming-soon {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-faint);
+      font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      padding: 2px 8px; border-radius: 100px;
+    }
+
+    /* ── .divider ── 단순 구분선 */
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 2.4em 0;
+    }
+
+    /* ── .header ── 도움말 상단 헤더 영역 */
+    .header {
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
+      border-radius: 14px 14px 0 0;
+      padding: 26px 24px 20px;
+      /* margin: -32px -24px 2em; */
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute; top: -50px; right: -50px;
+      width: 260px; height: 260px;
+      background: radial-gradient(circle, var(--header-glow) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .header > p  { margin: 0; }
+    /* 헤더 내부 h1은 라인·밑줄 제거 */
+    .header h1 {
+      margin: 0 0 6px !important;
+      border: none !important;
+      padding: 0 !important;
+    }
+    .header h1::after { display: none !important; }
+    .header .sub,
+    .header > p:not(:first-child) {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.65;
+      margin: 0;
+    }
+
+  </style>
+
+  <script>
+    /* ===================================================
+     * 전역 앱 컨텍스트
+     * =================================================== */
+    const oAPP = {
+      attr: { theme: '', parentId: '' },
+      IF_DATA: {}
+    };
+
+    /* ===================================================
+     * toggleTheme — 다크 / 라이트 테마 전환
+     *
+     * @param {'dark'|'light'|undefined} mode
+     *   'light' → 라이트 강제
+     *   'dark'  → 다크 강제
+     *   없음    → 현재 상태 토글
+     * @returns {'light'|'dark'}
+     * =================================================== */
+    window.toggleTheme = function(mode) {
+      if (mode === 'light')     document.body.classList.add('light-mode');
+      else if (mode === 'dark') document.body.classList.remove('light-mode');
+      else                      document.body.classList.toggle('light-mode');
+      return document.body.classList.contains('light-mode') ? 'light' : 'dark';
+    };
+
+    window.getCurrentTheme = function() {
+      return document.body.classList.contains('light-mode') ? 'light' : 'dark';
+    };
+
+    /* ===================================================
+     * applyLang — 언어 데이터로 DOM 텍스트 일괄 치환
+     *
+     * lang 값 유형:
+     *   "id" : "text"           → el.textContent
+     *   "id" : { html: "..." } → el.innerHTML
+     *
+     * 완료 후 body.lang-ready → 페이드 마스크 제거
+     * =================================================== */
+    function applyLang(lang) {
+      if (!lang || typeof lang !== 'object') return;
+
+      Object.entries(lang).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (typeof value === 'string') {
+          el.textContent = value;
+        } else if (value && typeof value === 'object') {
+          if (value.html !== undefined) el.innerHTML   = value.html;
+          if (value.text !== undefined) el.textContent = value.text;
+        }
+      });
+
+      requestAnimationFrame(() => document.body.classList.add('lang-ready'));
+    }
+
+    /* ===================================================
+     * init 이벤트 — 호출처(부모 프레임)로부터 초기 데이터 수신
+     *
+     * e.detail 구조:
+     * {
+     *   IF_DATA : object,   // 도움말 데이터
+     *   theme   : string,   // 'dark' | 'light'
+     *   parentId: string,   // 부모 DOM id
+     *   htmlLan : object,   // applyLang 언어 데이터
+     * }
+     * =================================================== */
+    window.addEventListener('init', (e) => {
+      oAPP.IF_DATA       = e.detail.IF_DATA   || {};
+      oAPP.attr.theme    = e.detail.theme     || 'dark';
+      oAPP.attr.parentId = e.detail.parentId  || '';
+
+      toggleTheme(oAPP.attr.theme);
+      if (e.detail.htmlLan) applyLang(e.detail.htmlLan);
+    });
+
+    /* ===================================================
+     * dispatchToParent — 부모 프레임으로 이벤트 전송
+     *
+     * 사용 예:
+     *   dispatchToParent('OK', { IF_DATA: oAPP.IF_DATA });
+     * =================================================== */
+    function dispatchToParent(eventName, detail) {
+      const dom = parent.document.getElementById(oAPP.attr.parentId);
+      if (!dom) return;
+      dom.dispatchEvent(new CustomEvent(eventName, { detail }));
+    }
+  </script>
+</head>
+
+<body>
+<!-- ====================================================
+     헤더 영역
+     ==================================================== -->
+<div class="header">
+<div class="badge">
+<p><span id="497">개발자 가이드</span></p>
+</div>
+<h1 id="이미지압축compress옵션-가이드"><span id="498">이미지</span><span
+id="499">압축(Compress)</span><span id="500">옵션 가이드</span></h1>
+<p><span id="501" class="sub">파일 업로드 시 이미지를 자동으로 압축하여
+용량을 줄이는 기능에 대한 가이드입니다.</span></p>
+</div>
+<!-- ====================================================
+     기능 설명
+     ==================================================== -->
+<section id="기능-설명" class="card">
+<h2><span id="502">기능 설명</span></h2>
+<p><span id="503">이미지 압축 옵션을 활성화하면, 사용자가 파일을
+업로드하는 시점에 브라우저에서 이미지를 자동으로 압축합니다. 압축이
+완료된 파일이 서버로 전달되므로, 업로드 속도가 빨라지고 저장 공간을
+절약할 수 있습니다.</span></p>
+<div class="note">
+<p><span id="504"><strong>옵션 비활성화 시</strong></span></p>
+<p><span id="505">압축 없이 원본 이미지 파일이 그대로 서버에 전달됩니다.
+파일 크기가 클 경우 업로드 속도가 느려질 수 있습니다.</span></p>
+</div>
+<div class="note">
+<p><span id="506"><strong>옵션 활성화 시</strong></span></p>
+<p><span id="507">파일 업로드 시점에 브라우저에서 이미지를 압축한 후
+서버로 전달합니다. 이미지 화질은 아래 <strong>이미지
+품질(Quality)</strong> 설정값에 따라 조절됩니다.</span></p>
+</div>
+</section>
+<!-- ====================================================
+     처리 흐름
+     ==================================================== -->
+<section>
+<div class="section-title">
+<p><span id="508">처리 흐름</span></p>
+</div>
+<div class="flow">
+<div class="flow-step">
+<div class="flow-icon blue">
+<p>📁</p>
+</div>
+<div class="flow-info">
+<p><span id="509" class="flow-label">파일 선택</span></p>
+<p><span id="510" class="flow-sub">사용자가 이미지 파일 선택</span></p>
+</div>
+</div>
+<p><span class="flow-arrow">→</span></p>
+<div class="flow-step">
+<div class="flow-icon orange">
+<p>🔍</p>
+</div>
+<div class="flow-info">
+<p><span id="511" class="flow-label">파일 형식 확인</span></p>
+<p><span id="512" class="flow-sub">jpg · png · webp 여부 판단</span></p>
+</div>
+</div>
+<p><span class="flow-arrow">→</span></p>
+<div class="flow-step">
+<div class="flow-icon blue">
+<p>🗜️</p>
+</div>
+<div class="flow-info">
+<p><span id="513" class="flow-label">브라우저 압축</span></p>
+<p><span id="514" class="flow-sub">품질 설정값 기준으로 압축</span></p>
+</div>
+</div>
+<p><span class="flow-arrow">→</span></p>
+<div class="flow-step">
+<div class="flow-icon green">
+<p>☁️</p>
+</div>
+<div class="flow-info">
+<p><span id="515" class="flow-label">서버 전송</span></p>
+<p><span id="516" class="flow-sub">압축된 파일 업로드</span></p>
+</div>
+</div>
+</div>
+<div class="warn">
+<p>⚠️ <span id="517">지원되지 않는 파일 형식(GIF, BMP, SVG 등)은 압축
+없이 <strong>원본 그대로</strong> 서버에 전달됩니다.</span></p>
+</div>
+</section>
+<!-- ====================================================
+     압축 지원 이미지 형식
+     ==================================================== -->
+<section>
+<div class="section-title">
+<p><span id="518">압축 지원 이미지 형식</span></p>
+</div>
+<div class="card">
+<p><span id="519">아래 세 가지 형식의 이미지 파일에 한해 압축이
+적용됩니다. 이 외의 파일은 압축 없이 원본이 업로드됩니다.</span></p>
+<div class="format-tags">
+<div class="format-tag">
+<p><span class="format-tag-name">.jpg / .jpeg</span> <span id="520"
+class="format-tag-desc">일반 사진 파일에 적합</span></p>
+</div>
+<div class="format-tag">
+<p><span class="format-tag-name">.png</span> <span id="521"
+class="format-tag-desc">투명 배경 이미지 지원</span></p>
+</div>
+<div class="format-tag">
+<p><span class="format-tag-name">.webp</span> <span id="522"
+class="format-tag-desc">차세대 고효율 이미지 형식</span></p>
+</div>
+</div>
+</div>
+</section>
+<!-- ====================================================
+     적용 예시
+     ==================================================== -->
+<section>
+<div class="section-title">
+<p><span id="523">적용 예시</span></p>
+</div>
+<div class="img-placeholder">
+<p>🖼️</p>
+<p><span id="524" class="img-placeholder-badge">이미지 삽입
+영역</span></p>
+<p><span id="525" class="img-placeholder-title">압축 전 · 후 파일 크기
+비교 화면</span></p>
+<p><span id="526" class="img-placeholder-desc">옵션 활성화 후 업로드된
+원본 파일 크기와 압축 이후 줄어든 파일 크기가 표시된 화면 캡처 이미지를
+이곳에 삽입하세요.</span></p>
+</div>
+<div class="size-compare">
+<div class="size-item">
+<p><span id="527" class="size-label">원본 파일 크기</span></p>
+<p><span class="size-before">3.2 MB</span></p>
+<p><span class="size-sub">original.jpg</span></p>
+</div>
+<div class="size-arrow">
+<p>→</p>
+<p><span id="529" class="size-reduction">▼ 72% 절감</span></p>
+</div>
+<div class="size-item">
+<p><span id="528" class="size-label">압축 후 파일 크기</span></p>
+<p><span class="size-after">910 KB</span></p>
+<p><span class="size-sub">품질 0.80 기준</span></p>
+</div>
+</div>
+<div class="note">
+<p>ℹ️ <span id="530">위 수치는 예시입니다. 실제 압축 결과는 이미지
+종류·해상도·품질 설정값에 따라 달라질 수 있습니다.</span></p>
+</div>
+</section>
+<!-- ====================================================
+     이용 안내
+     ==================================================== -->
+<section>
+<div class="section-title">
+<p><span id="531">이용 안내</span></p>
+</div>
+<div class="card">
+<div class="steps">
+<ol type="1">
+<li><p><strong><span id="532">옵션 활성화</span></strong></p>
+<p><span id="533">하단 설정 영역에서 이미지 압축 옵션을
+<strong>ON</strong>으로 설정합니다.</span></p></li>
+<li><p><strong><span id="534">이미지 품질 설정</span></strong></p>
+<p><span id="535">품질 값은 <strong>0.01 ~ 1</strong> 사이의 숫자로
+설정합니다. 숫자가 낮을수록 파일 크기가 작아지고, 높을수록 원본에 가까운
+화질이 유지됩니다.</span></p></li>
+<li><p><strong><span id="536">파일 업로드</span></strong></p>
+<p><span id="537">이미지 파일을 업로드하면 브라우저에서 자동으로 압축이
+진행됩니다. 별도의 작업 없이 압축된 파일이 서버에
+저장됩니다.</span></p></li>
+<li><p><strong><span id="538">결과 확인</span></strong></p>
+<p><span id="539">업로드 완료 후 원본 파일 크기와 압축 후 파일 크기를
+화면에서 확인할 수 있습니다.</span></p></li>
+</ol>
+</div>
+</div>
+</section>
+<div class="divider">
+
+</div>
+</body>
+</html>

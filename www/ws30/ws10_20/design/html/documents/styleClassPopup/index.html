@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>도움말 템플릿</title>
+  <style>
+
+    /* =====================================================
+     * CSS Variables
+     * ===================================================== */
+    :root {
+      --bg:          #0b1220;
+      --border:      #243553;
+      --text:        #e7eefc;
+      --text-muted:  #a9b8d6;
+      --text-faint:  #647891;
+      --accent:      #4aa3ff;
+
+      --code-bg:     rgba(74,163,255,.08);
+      --code-border: rgba(74,163,255,.18);
+      --code-text:   #7dd3fc;
+      --pre-bg:      #090f1c;
+      --pre-border:  #1e2f47;
+
+      --table-head-bg:   rgba(74,163,255,.1);
+      --table-row-even:  rgba(255,255,255,.02);
+      --table-row-hover: rgba(74,163,255,.06);
+
+      --bq-border: #4aa3ff;
+      --bq-bg:     rgba(74,163,255,.05);
+
+      --scrollbar-thumb: #647891;
+    }
+
+    body.light-mode {
+      --bg:          #f5f7fa;
+      --border:      #dde1ea;
+      --text:        #101828;
+      --text-muted:  #475467;
+      --text-faint:  #98a2b3;
+      --accent:      #2563eb;
+
+      --code-bg:     rgba(37,99,235,.06);
+      --code-border: rgba(37,99,235,.15);
+      --code-text:   #1d4ed8;
+      --pre-bg:      #f8faff;
+      --pre-border:  #dde1ea;
+
+      --table-head-bg:   rgba(37,99,235,.07);
+      --table-row-even:  rgba(0,0,0,.02);
+      --table-row-hover: rgba(37,99,235,.04);
+
+      --bq-border: #2563eb;
+      --bq-bg:     rgba(37,99,235,.04);
+
+      --scrollbar-thumb: #c0c8d8;
+    }
+
+
+    /* =====================================================
+     * Reset & Base
+     * ===================================================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body > header { display: none; } /* pandoc 자동 생성 title 헤더 숨김 */
+
+    body {
+      font-family: 'Pretendard', 'Apple SD Gothic Neo', system-ui, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.75;
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+      transition: background .2s, color .2s;
+    }
+
+    /* 언어 전환 페이드 마스크 */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--bg);
+      opacity: 1;
+      pointer-events: none;
+      transition: opacity .4s ease;
+    }
+    body.lang-ready::after { opacity: 0; }
+
+
+    /* =====================================================
+     * Scrollbar
+     * ===================================================== */
+    ::-webkit-scrollbar        { width: 16px; height: 16px; }
+    ::-webkit-scrollbar-track  { background: var(--bg); }
+    ::-webkit-scrollbar-thumb  {
+      background: var(--scrollbar-thumb);
+      border: 3px solid var(--bg);
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover { filter: brightness(1.2); }
+    ::-webkit-scrollbar-corner { background: var(--bg); }
+
+
+    /* =====================================================
+     * Headings
+     * ===================================================== */
+    h1,
+    h2 {
+      font-weight: 700;
+      line-height: 1.35;
+      color: var(--text);
+      margin: 2em 0 .65em;
+    }
+    :is(h1, h2):first-child { margin-top: 0; }
+
+    h1 {
+      font-size: 22px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--border);
+      position: relative;
+    }
+    h1::after {
+      content: '';
+      position: absolute; left: 0; bottom: -2px;
+      width: 52px; height: 2px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+
+    h2 {
+      font-size: 17px;
+      color: var(--accent);
+      display: flex; align-items: center; gap: 10px;
+    }
+    h2::after {
+      content: '';
+      flex: 1; height: 1px;
+      background: linear-gradient(90deg, var(--border), transparent);
+    }
+
+
+    /* =====================================================
+     * Paragraph & Inline
+     * ===================================================== */
+    p {
+      font-size: 14px;
+      color: var(--text);
+      margin: 0 0 .9em;
+    }
+    p:last-child { margin-bottom: 0; }
+
+    strong,
+    b { font-weight: 700; color: var(--text); }
+
+    em,
+    i { font-style: italic; color: var(--text-muted); }
+
+    code {
+      font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 12.5px;
+      background: var(--code-bg);
+      color: var(--code-text);
+      border: 1px solid var(--code-border);
+      border-radius: 4px;
+      padding: 1px 6px;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color .15s, opacity .15s;
+    }
+    a:hover {
+      border-bottom-color: var(--accent);
+      opacity: .8;
+    }
+
+
+    /* =====================================================
+     * Blockquote
+     * ===================================================== */
+    blockquote {
+      margin: 1.2em 0;
+      padding: 12px 16px;
+      border-left: 4px solid var(--bq-border);
+      background: var(--bq-bg);
+      border-radius: 0 8px 8px 0;
+      font-size: 13.5px;
+    }
+    blockquote p {
+      margin: 0;
+      color: var(--text-muted);
+    }
+    blockquote p + p { margin-top: .5em; }
+
+
+    /* =====================================================
+     * Lists
+     * ===================================================== */
+    ul,
+    ol {
+      margin: .6em 0 1em 1.4em;
+      padding-left: .4em;
+    }
+    li {
+      font-size: 14px;
+      color: var(--text);
+      margin-bottom: .3em;
+    }
+    ul > li::marker { color: var(--accent); }
+    ol > li::marker { color: var(--accent); font-weight: 700; }
+
+    /* ol 이용 안내 : 제목(strong) / 본문(span) 구분 */
+    ol > li p                  { margin: 0; }
+    ol > li p > strong:first-child { display: block; margin-bottom: 3px; }
+    ol > li p > strong + span  {
+      color: var(--text-muted);
+      font-size: 13.5px;
+    }
+
+
+    /* =====================================================
+     * Code Block
+     * ===================================================== */
+    pre {
+      margin: 1.2em 0;
+      padding: 16px 18px;
+      background: var(--pre-bg);
+      border: 1px solid var(--pre-border);
+      border-radius: 10px;
+      overflow-x: auto;
+    }
+    pre code {
+      background: none; border: none; padding: 0;
+      font-size: 13px; color: var(--text-muted);
+    }
+
+    /* code block language label (top-right) */
+    div.sourceCode {
+      position: relative;
+      margin: 1.2em 0;
+    }
+    div.sourceCode > pre { margin: 0; }
+    div.sourceCode::before {
+      content: attr(data-lang);
+      position: absolute;
+      top: 8px; right: 12px;
+      font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 10.5px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      pointer-events: none;
+    }
+
+
+    /* =====================================================
+     * Syntax Highlighting (Pandoc Skylighting tokens + ABAP)
+     * Token classes:
+     *   kw=keyword  dt=datatype  cf=controlflow  op=operator  bu=builtin
+     *   st=string   ch=character  sc=specialchar
+     *   co=comment  do=documentation
+     *   dv=decval  bn=basenval  fl=float  cn=constant
+     *   ot=other(attribute name)  va=variable  fu=function
+     *   at=attribute(attr value)  an=annotation  pp=preprocessor
+     *   er=error  wa=warning
+     * ===================================================== */
+
+    /* Dark theme (default) */
+    code .kw, code .cf, code .bu        { color: #c792ea; font-weight: 600; }   /* keyword / control / builtin (purple) */
+    code .dt                            { color: #82aaff; }                     /* datatype (blue) */
+    code .st, code .ch, code .sc, code .at { color: #c3e88d; }                  /* string / char / attribute value (green) */
+    code .co, code .do                  { color: #647891; font-style: italic; } /* comment (muted) */
+    code .dv, code .bn, code .fl, code .cn { color: #f78c6c; }                  /* number / constant (orange) */
+    code .ot, code .va                  { color: #ffcb6b; }                     /* attribute name / variable (yellow) */
+    code .fu                            { color: #82aaff; }                     /* function name (blue) */
+    code .op                            { color: #89ddff; }                     /* operator (cyan) */
+    code .an, code .pp                  { color: #c792ea; }                     /* annotation / preprocessor */
+    code .er                            { color: #ff5370; text-decoration: underline wavy; }
+    code .wa                            { color: #ffcb6b; text-decoration: underline wavy; }
+    /* line numbers / anchors emitted by pandoc */
+    code .lineanchor, code .ln          { color: var(--text-faint); }
+    code a[href^="#cb"]                 { color: var(--text-faint); border-bottom: none; }
+
+    /* Light theme override */
+    body.light-mode code .kw,
+    body.light-mode code .cf,
+    body.light-mode code .bu            { color: #6f42c1; }                     /* keyword (purple) */
+    body.light-mode code .dt            { color: #005cc5; }                     /* datatype */
+    body.light-mode code .st,
+    body.light-mode code .ch,
+    body.light-mode code .sc,
+    body.light-mode code .at            { color: #22863a; }                     /* string */
+    body.light-mode code .co,
+    body.light-mode code .do            { color: #98a2b3; }                     /* comment */
+    body.light-mode code .dv,
+    body.light-mode code .bn,
+    body.light-mode code .fl,
+    body.light-mode code .cn            { color: #d73a49; }                     /* number */
+    body.light-mode code .ot,
+    body.light-mode code .va            { color: #b8860b; }                     /* attribute name (dark-yellow) */
+    body.light-mode code .fu            { color: #005cc5; }                     /* function */
+    body.light-mode code .op            { color: #0366d6; }                     /* operator */
+    body.light-mode code .an,
+    body.light-mode code .pp            { color: #6f42c1; }
+    body.light-mode code .er            { color: #d73a49; }
+    body.light-mode code .wa            { color: #b8860b; }
+
+
+    /* =====================================================
+     * Table
+     * ===================================================== */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.2em 0;
+      font-size: 13.5px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      /* pandoc 기본 display:block 덮어쓰기 */
+      display: table;
+    }
+    thead tr { background: var(--table-head-bg); }
+    th {
+      padding: 10px 14px;
+      font-weight: 700; font-size: 12px;
+      letter-spacing: .05em; text-transform: uppercase;
+      color: var(--accent);
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+    td {
+      padding: 9px 14px;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    tr:last-child td           { border-bottom: none; }
+    tbody tr:nth-child(even)   { background: var(--table-row-even); }
+    tbody tr:hover             { background: var(--table-row-hover); }
+
+
+    /* =====================================================
+     * Image / Figure
+     * ===================================================== */
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      display: block;
+      margin: 0;
+    }
+    figure { margin: 0 0 2em; }
+    figcaption {
+      font-size: 12px;
+      color: var(--text-faint);
+      margin-top: 6px;
+    }
+
+
+    /* =====================================================
+     * Horizontal Rule
+     * ===================================================== */
+    hr {
+      border: none; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 2em 0;
+    }
+
+  </style>
+
+  <script>
+    const oAPP = {
+      attr: { theme: '', parentId: '' },
+      IF_DATA: {}
+    };
+
+    window.toggleTheme = function(mode) {
+      if (mode === 'light')     document.body.classList.add('light-mode');
+      else if (mode === 'dark') document.body.classList.remove('light-mode');
+      else                      document.body.classList.toggle('light-mode');
+      return document.body.classList.contains('light-mode') ? 'light' : 'dark';
+    };
+
+    window.getCurrentTheme = function() {
+      return document.body.classList.contains('light-mode') ? 'light' : 'dark';
+    };
+
+    function applyLang() {
+
+      // help document를 호출한 부모의 메시지 text 정보 얻는 function 참조. 
+      const _WSUTIL = parent?.parent?.WSUTIL;
+
+      if(!_WSUTIL?.getWsMsgClsTxt){return;}
+
+      document.querySelectorAll('[msgid]').forEach(el => {
+        const msgNr = el.getAttribute('msgid');
+
+        if(!msgNr){return;}
+
+        const text = _WSUTIL.getWsMsgClsTxt("", "ZMSG_WS_COMMON_001", msgNr);
+        
+        el.textContent = text;
+        
+      });
+    }
+
+    /* =====================================================
+     * Code Block: language label + ABAP syntax highlighting
+     * ===================================================== */
+    function decorateCodeBlocks() {
+      // 1) 언어 라벨 부착 — pandoc은 div.sourceCode + class="sourceCode <lang>" 형태로 출력
+      document.querySelectorAll('div.sourceCode').forEach(div => {
+        const codeEl = div.querySelector('code');
+        if (!codeEl) return;
+        const lang = [...codeEl.classList].find(c => c !== 'sourceCode');
+        if (lang) div.setAttribute('data-lang', lang);
+      });
+
+      // 2) ABAP 구문 강조 — pandoc 기본 highlighter가 ABAP을 지원하지 않아 직접 토큰화
+      const abapKeywords = new Set([
+        // 명령문
+        'data','types','constants','field-symbols','tables','parameters','select-options',
+        'class','endclass','interface','endinterface','method','endmethod','function','endfunction',
+        'form','endform','module','endmodule','event','endevent',
+        'public','private','protected','section','definition','implementation','final','abstract','create',
+        'methods','class-methods','events','class-events','class-data','aliases',
+        'importing','exporting','changing','returning','raising','exceptions','optional','default','reference',
+        'value','type','like','ref','to','of','with','header','line','occurs','initial','size',
+        // 제어
+        'if','elseif','else','endif','case','when','endcase','do','enddo','while','endwhile',
+        'loop','endloop','at','endat','on','change','first','last','exit','continue','check','return',
+        'try','endtry','catch','endcatch','cleanup','endcleanup','raise','message','assert',
+        // SELECT/DB
+        'select','from','into','where','order','by','group','having','endselect','single','distinct',
+        'inner','left','outer','join','as','client','specified','for','all','entries','up','rows','offset',
+        'insert','update','delete','modify','commit','rollback','work','open','cursor','close','fetch','next',
+        // 조작
+        'move','clear','refresh','free','append','collect','read','table','assigning','transporting','no-gaps',
+        'sort','ascending','descending','index','call','perform','using','submit','and','return','export',
+        'import','memory','id','to','from',
+        // 논리/연산
+        'and','or','not','equiv','between','in','is','bound','assigned','supplied','requested','initial',
+        'eq','ne','ge','gt','le','lt','co','cn','ca','na','cs','ns','cp','np',
+        // 출력/타입
+        'write','format','color','intensified','inverse','frame','string','character','integer','packed',
+        'decimals','length','line','skip','uline','new-line','new-page','top-of-page','end-of-page',
+        // 기타 자주 쓰임
+        'begin','end','occurrence','replace','search','translate','condense','find','split','concatenate',
+        'separated','respecting','case','field','symbol','assign','offset','section','part','where','stable',
+        'me','self','super','this','sy','syst','space','abap_true','abap_false','x','c','n','d','t','i','f','p'
+      ]);
+
+      const escapeHTML = (s) => s.replace(/[&<>]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]));
+
+      function highlightAbap(src) {
+        // 토큰을 한 번의 정규식 매치로 추출 — comment / string / number / identifier 순으로 우선
+        // ABAP 주석: 라인 첫 컬럼 '*' 또는 모든 위치의 '"'
+        const tokenRe = /(^\*[^\n]*)|("[^\n]*)|('(?:[^'\\]|\\.)*')|(`(?:[^`\\]|\\.)*`)|(\b\d+(?:\.\d+)?\b)|([A-Za-z_][\w-]*)|(\s+)|([^\s])/gm;
+        let out = '';
+        let m;
+        while ((m = tokenRe.exec(src)) !== null) {
+          const lineCo = m[1], inlineCo = m[2], sStr = m[3], bStr = m[4],
+                num    = m[5], ident    = m[6], ws   = m[7], sym  = m[8];
+          if (lineCo)        out += '<span class="co">' + escapeHTML(lineCo)   + '</span>';
+          else if (inlineCo) out += '<span class="co">' + escapeHTML(inlineCo) + '</span>';
+          else if (sStr)     out += '<span class="st">' + escapeHTML(sStr)     + '</span>';
+          else if (bStr)     out += '<span class="st">' + escapeHTML(bStr)     + '</span>';
+          else if (num)      out += '<span class="dv">' + num                  + '</span>';
+          else if (ident) {
+            const lower = ident.toLowerCase();
+            if (abapKeywords.has(lower)) out += '<span class="kw">' + escapeHTML(ident) + '</span>';
+            else                         out += escapeHTML(ident);
+          }
+          else if (ws)  out += ws;
+          else if (sym) out += '<span class="op">' + escapeHTML(sym) + '</span>';
+        }
+        return out;
+      }
+
+      // pandoc은 highlighter가 인식하지 못하는 언어(ABAP 등)는
+      //   <pre class="abap"><code>...</code></pre> 형태로 출력하므로 pre.abap 도 잡는다.
+      const abapBlocks = document.querySelectorAll(
+        'pre.abap > code, pre > code.abap, pre > code.language-abap, code.sourceCode.abap'
+      );
+      abapBlocks.forEach(codeEl => {
+        const raw = codeEl.textContent;
+        codeEl.innerHTML = highlightAbap(raw);
+        // 부모 div가 없으면 라벨 표시를 위해 래핑
+        if (!codeEl.closest('div.sourceCode')) {
+          const pre = codeEl.parentElement;
+          if (pre && pre.tagName === 'PRE') {
+            const wrap = document.createElement('div');
+            wrap.className = 'sourceCode';
+            wrap.setAttribute('data-lang', 'abap');
+            pre.parentNode.insertBefore(wrap, pre);
+            wrap.appendChild(pre);
+          }
+        }
+      });
+    }
+
+    window.addEventListener('init', (e) => {
+      oAPP.IF_DATA       = e.detail.IF_DATA   || {};
+      oAPP.attr.theme    = e.detail.theme     || 'dark';
+      oAPP.attr.parentId = e.detail.parentId  || '';
+
+      //테마 적용.
+      toggleTheme(oAPP.attr.theme);
+      
+      //도움말 문서 내 텍스트를 언어키에 맞게 변경.
+      applyLang(e.detail.msgInfo);
+
+      //코드 블록 언어 라벨 부착 + ABAP 구문 강조.
+      decorateCodeBlocks();
+
+      //code dom
+      setCodeDomEnhancements();
+
+      //언어 변경 후 페이드 아웃 효과 적용.
+      requestAnimationFrame(() => document.body.classList.add('lang-ready'));
+
+    });
+
+    function dispatchToParent(eventName, detail) {
+      const dom = parent.document.getElementById(oAPP.attr.parentId);
+      if (!dom) return;
+      dom.dispatchEvent(new CustomEvent(eventName, { detail }));
+    }
+
+    function sendResultToParent(sParam){
+
+        //부모창에 OK 이벤트 전달.
+        const _parentDom = parent.document.getElementById(oAPP.attr.parentId);
+
+        if(!_parentDom){
+            return;
+        }
+
+        _parentDom.dispatchEvent(new CustomEvent('childResponse', {
+            detail: sParam
+        }));
+
+    }
+
+
+    //code dom에 더블클릭 이벤트 추가.
+    function setCodeDomEnhancements(){
+
+      //code cursor 클래스가 추가된 dom 정보 발췌.
+      const _aDom = document.body.querySelectorAll(".codeCursor");
+
+      if(_aDom.length === 0){
+        return;
+      }
+
+      for(let _oDom of _aDom){
+
+        _oDom.addEventListener("dblclick", sendStyleClassParam);
+
+      }
+
+
+    }
+
+
+    //부모에 STYLE CLASS 정보 전달.
+    function sendStyleClassParam(oEvent){
+
+        if(!oEvent?.target?.innerText){
+          return;
+        }
+
+        sendResultToParent({ACTCD: "OK", IF_DATA : {styleClass:oEvent.target.innerText}});
+
+    }
+
+  </script>
+</head>
+
+<body>
+<h1 msgid="566">Predefined SAPUI5 CSS Class</h1>
+<p><span msgid="567">A reference list of predefined SAPUI5 CSS classes,
+including margin, padding, content density, and other utility classes.
+Double-click a class name to add it to the styleClass
+property.</span></p>
+<h2 msgid="568">Full Margins</h2>
+<p><span msgid="569">Clears space on all sides of the control.</span></p>
+<table style="width:89%;">
+<colgroup>
+<col style="width: 30%" />
+<col style="width: 58%" />
+</colgroup>
+<thead>
+<tr>
+<th msgid="625">Class</th>
+<th msgid="176">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code class="codeCursor">sapUiTinyMargin</code></td>
+<td><span msgid="570">8px margin on all four sides.</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiSmallMargin</code></td>
+<td><span msgid="571">16px margin on all four sides.</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiMediumMargin</code></td>
+<td><span msgid="572">32px margin on all four sides.</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiLargeMargin</code></td>
+<td><span msgid="573">48px margin on all four sides.</span></td>
+</tr>
+</tbody>
+</table>
+<h2 msgid="574">Single-Sided Margins</h2>
+<p><span msgid="575">Clears space on a single side (Top / Bottom / Begin /
+End). Begin is left in LTR and right in RTL.</span></p>
+<table>
+<colgroup>
+<col style="width: 28%" />
+<col style="width: 71%" />
+</colgroup>
+<thead>
+<tr>
+<th msgid="625">Class</th>
+<th msgid="176">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code class="codeCursor">sapUiTinyMarginTop</code></td>
+<td><span msgid="576">8px margin on the top side.</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiTinyMarginBottom</code></td>
+<td><span msgid="577">8px margin on the bottom side.</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiTinyMarginBegin</code></td>
+<td><span msgid="578">8px margin on the begin side (left in LTR, right in
+RTL).</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiTinyMarginEnd</code></td>
+<td><span msgid="579">8px margin on the end side (right in LTR, left in
+RTL).</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiSmallMarginTop</code></td>
+<td><span msgid="580">16px margin on the top side.</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiSmallMarginBottom</code></td>
+<td><span msgid="581">16px margin on the bottom side.</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiSmallMarginBegin</code></td>
+<td><span msgid="582">16px margin on the begin side (left in LTR, right in
+RTL).</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiSmallMarginEnd</code></td>
+<td><span msgid="583">16px margin on the end side (right in LTR, left in
+RTL).</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiMediumMarginTop</code></td>
+<td><span msgid="584">32px margin on the top side.</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiMediumMarginBottom</code></td>
+<td><span msgid="585">32px margin on the bottom side.</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiMediumMarginBegin</code></td>
+<td><span msgid="586">32px margin on the begin side (left in LTR, right in
+RTL).</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiMediumMarginEnd</code></td>
+<td><span msgid="587">32px margin on the end side (right in LTR, left in
+RTL).</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiLargeMarginTop</code></td>
+<td><span msgid="588">48px margin on the top side.</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiLargeMarginBottom</code></td>
+<td><span msgid="589">48px margin on the bottom side.</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiLargeMarginBegin</code></td>
+<td><span msgid="590">48px margin on the begin side (left in LTR, right in
+RTL).</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiLargeMarginEnd</code></td>
+<td><span msgid="591">48px margin on the end side (right in LTR, left in
+RTL).</span></td>
+</tr>
+</tbody>
+</table>
+<h2 msgid="592">Two-Sided Margins</h2>
+<p><span msgid="593">Clears space on two opposite sides at once (BeginEnd
+= horizontal, TopBottom = vertical).</span></p>
+<table>
+<colgroup>
+<col style="width: 32%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr>
+<th msgid="625">Class</th>
+<th msgid="176">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code class="codeCursor">sapUiTinyMarginBeginEnd</code></td>
+<td><span msgid="594">8px margin on both begin and end sides
+(horizontal).</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiTinyMarginTopBottom</code></td>
+<td><span msgid="595">8px margin on both top and bottom sides
+(vertical).</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiSmallMarginBeginEnd</code></td>
+<td><span msgid="596">16px margin on both begin and end sides
+(horizontal).</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiSmallMarginTopBottom</code></td>
+<td><span msgid="597">16px margin on both top and bottom sides
+(vertical).</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiMediumMarginBeginEnd</code></td>
+<td><span msgid="598">32px margin on both begin and end sides
+(horizontal).</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiMediumMarginTopBottom</code></td>
+<td><span msgid="599">32px margin on both top and bottom sides
+(vertical).</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiLargeMarginBeginEnd</code></td>
+<td><span msgid="600">48px margin on both begin and end sides
+(horizontal).</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiLargeMarginTopBottom</code></td>
+<td><span msgid="601">48px margin on both top and bottom sides
+(vertical).</span></td>
+</tr>
+</tbody>
+</table>
+<h2 msgid="602">Negative Margins</h2>
+<p><span msgid="603">Applies a two-sided (BeginEnd) negative margin.
+Useful for aligning elements with built-in paddings.</span></p>
+<table>
+<colgroup>
+<col style="width: 38%" />
+<col style="width: 62%" />
+</colgroup>
+<thead>
+<tr>
+<th msgid="625">Class</th>
+<th msgid="176">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code class="codeCursor">sapUiTinyNegativeMarginBeginEnd</code></td>
+<td><span msgid="604">-8px negative margin on both begin and end
+sides.</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiSmallNegativeMarginBeginEnd</code></td>
+<td><span msgid="605">-16px negative margin on both begin and end
+sides.</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiMediumNegativeMarginBeginEnd</code></td>
+<td><span msgid="606">-32px negative margin on both begin and end
+sides.</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiLargeNegativeMarginBeginEnd</code></td>
+<td><span msgid="607">-48px negative margin on both begin and end
+sides.</span></td>
+</tr>
+</tbody>
+</table>
+<h2 msgid="608">Responsive Margin</h2>
+<p><span msgid="609">Adapts its margin based on the available screen width
+using media queries.</span></p>
+<table>
+<colgroup>
+<col style="width: 17%" />
+<col style="width: 82%" />
+</colgroup>
+<thead>
+<tr>
+<th msgid="625">Class</th>
+<th msgid="176">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code class="codeCursor">sapUiResponsiveMargin</code></td>
+<td><span msgid="610">Screen &lt; 600px: 16px bottom only. 600–1023px:
+16px on all sides. &gt; 1023px: 16px top/bottom and 32px
+begin/end.</span></td>
+</tr>
+</tbody>
+</table>
+<h2 msgid="611">Content Density</h2>
+<p><span msgid="612">Switches the overall size and spacing of controls.
+Set on a parent element (commonly</span></p>
+<table>
+<colgroup>
+<col style="width: 12%" />
+<col style="width: 88%" />
+</colgroup>
+<thead>
+<tr>
+<th msgid="625">Class</th>
+<th msgid="176">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code class="codeCursor">sapUiSizeCozy</code></td>
+<td><span msgid="613">Cozy density — larger dimensions and spacing
+optimized for touch-enabled devices. Default density for most sap.m
+controls.</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiSizeCompact</code></td>
+<td><span msgid="614">Compact density — reduced control dimensions and
+spacing (font size unchanged), optimized for desktop and non-touch
+devices operated by mouse.</span></td>
+</tr>
+</tbody>
+</table>
+<h2 msgid="615">Utility</h2>
+<p><span msgid="616">Helper classes that complement the margin
+classes.</span></p>
+<table>
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 85%" />
+</colgroup>
+<thead>
+<tr>
+<th msgid="625">Class</th>
+<th msgid="176">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code class="codeCursor">sapUiForceWidthAuto</code></td>
+<td><span msgid="617">Overrides a control’s default 100% width with
+<code>auto</code>. Useful for controls without a <code>width</code>
+property (e.g. <code>sap.m.IconTabBar</code>).</span></td>
+</tr>
+</tbody>
+</table>
+<h2 msgid="618">No Margin</h2>
+<p><span msgid="619">Removes margins from controls that ship with default
+margins.</span></p>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 74%" />
+</colgroup>
+<thead>
+<tr>
+<th msgid="625">Class</th>
+<th msgid="176">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code class="codeCursor">sapUiNoMargin</code></td>
+<td><span msgid="620">Removes margins on all four sides.</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiNoMarginTop</code></td>
+<td><span msgid="621">Removes the top-side margin.</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiNoMarginBottom</code></td>
+<td><span msgid="622">Removes the bottom-side margin.</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiNoMarginBegin</code></td>
+<td><span msgid="623">Removes the begin-side margin (left in LTR, right in
+RTL).</span></td>
+</tr>
+<tr>
+<td><code class="codeCursor">sapUiNoMarginEnd</code></td>
+<td><span msgid="624">Removes the end-side margin (right in LTR, left in
+RTL).</span></td>
+</tr>
+</tbody>
+</table>
+</body>
+</html>
