@@ -703,8 +703,11 @@
         oInput.placeholder = "Search";
         oInput.addEventListener("change", function () { oInput.value = (oInput.value || "").toUpperCase(); WS_STATE.WS10.APPID = oInput.value; });
         oInput.addEventListener("keydown", function (e) {
+            // F4 → 앱 검색 도움(value help). 검색 아이콘 클릭과 동일.
             if (e.key === "F4") { e.preventDefault(); _invoke("ev_AppValueHelp", "App Search Help (F4)"); }
-            else if (e.key === "Enter") { _invoke("ev_AppDisplay", _txt("A05")); }
+            // Enter → 원본(sap.m.SearchField search → ev_AppValueHelp)은 keyCode 13 이면
+            //   즉시 return = 아무 동작 안 함(Display/팝업 X). 동일하게 no-op(기본 동작만 방지).
+            else if (e.key === "Enter") { e.preventDefault(); }
         });
         oInput.addEventListener("dblclick", function () { oInput.select(); });
 
