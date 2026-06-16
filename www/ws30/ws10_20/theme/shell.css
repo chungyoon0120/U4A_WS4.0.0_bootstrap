@@ -556,49 +556,8 @@ a:hover {
     opacity: 1;
 }
 
-/* ── 메시지 박스 (MessageBox 대체) ──────────────────────────────── */
-.u4a-msgbox {
-    min-width: min(18rem, 90vw);
-    max-width: min(28rem, 92vw);
-    max-height: 90vh;
-    overflow: auto;
-    padding: 0;
-    border: 0.0625rem solid var(--line);
-    border-radius: var(--radius);
-    background: var(--surface-raised);
-    color: var(--text);
-    box-shadow: var(--popover-shadow);
-}
-
-.u4a-msgbox__title {
-    padding: 0.75rem 1rem 0;
-    font-weight: 700;
-}
-
-.u4a-msgbox__title[data-type="E"] {
-    color: var(--state-error);
-}
-
-.u4a-msgbox__title[data-type="W"] {
-    color: var(--state-warning);
-}
-
-.u4a-msgbox__title[data-type="S"] {
-    color: var(--state-success);
-}
-
-.u4a-msgbox__body {
-    padding: 0.75rem 1rem;
-    white-space: pre-wrap;
-    line-height: 1.45;
-}
-
-.u4a-msgbox__footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem 1rem;
-}
+/* 메시지 박스(MessageBox 대체)는 .u4a-dialog 구조로 통일됨 — 구 .u4a-msgbox 제거.
+   (셸 fnConfirmBox / 로그인 fnMessageBox / showMessage / 서버리스트 fnShowMessageBox 공통) */
 
 /* ── 폼 다이얼로그 (Dialog + Form 대체) — 뷰포트 초과 방지(반응형) ── */
 .u4a-dialog {
@@ -632,6 +591,25 @@ a:hover {
 .u4a-dialog__header i {
     font-size: 1rem;
     color: var(--icon-muted);
+}
+
+/* fnConfirmBox/메시지박스가 .u4a-dialog__header 에 data-type(S/E/W/I/C) 을 세팅한다.
+   서버리스트 fnShowMessageBox 와 동일하게 타입 의미색만 아이콘에 입혀 디자인 통일. */
+.u4a-dialog__header[data-type="E"] i {
+    color: var(--state-error);
+}
+
+.u4a-dialog__header[data-type="W"] i {
+    color: var(--state-warning);
+}
+
+.u4a-dialog__header[data-type="S"] i {
+    color: var(--state-success);
+}
+
+.u4a-dialog__header[data-type="I"] i,
+.u4a-dialog__header[data-type="C"] i {
+    color: var(--accent);
 }
 
 .u4a-dialog__body {

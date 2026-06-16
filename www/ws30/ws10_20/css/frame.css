@@ -460,6 +460,8 @@ body {
     overflow: hidden;
 }
 
+/* [참고] 로그인 호스트 헤더는 이제 공통 .u4a-titlebar 를 사용한다(view.js).
+   아래 .u4aFrame* 헤더 규칙은 현재 미사용(보존만). */
 .u4aFrameHeader {
     -webkit-app-region: drag;
     display: flex;

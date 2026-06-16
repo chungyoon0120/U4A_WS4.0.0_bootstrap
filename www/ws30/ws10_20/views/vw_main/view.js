@@ -25,42 +25,45 @@ export async function getView() {
     ROOT.className = "u4aFrame";
 
     /* ===== 헤더(타이틀바) 시작 (구 CustomHeader: sap.m.Bar) ===== */
+    // ★ UX 통일: 별도 .u4aFrame* 가 아니라 공통 타이틀바 컴포넌트(.u4a-titlebar)를
+    //   그대로 사용한다 → ServerList / Main 창과 높이·폰트·로고·버튼이 픽셀 단위로 동일.
     const HEADER = document.createElement("header");
-    HEADER.className = "u4aFrameHeader u4aWsBrowserDraggable";
+    HEADER.className = "u4a-titlebar u4aWsBrowserDraggable";
 
     // 로고 (구 sap.m.Image)
     const LOGO = document.createElement("img");
-    LOGO.className = "u4aFrameLogo";
+    LOGO.className = "u4a-titlebar__logo";
     LOGO.src = parent.PATHINFO.WS_LOGO;
     LOGO.setAttribute("draggable", "false");
     HEADER.appendChild(LOGO);
 
     // 타이틀 (구 sap.m.Title)
     const TITLE1 = document.createElement("span");
-    TITLE1.className = "u4aFrameTitle";
+    TITLE1.className = "u4a-titlebar__title";
     TITLE1.textContent = "";
     HEADER.appendChild(TITLE1);
     oContr.ui.WINDOW_TITLE = TITLE1;
 
-    // 우측 윈도우 버튼 영역
-    const WINBTNS = document.createElement("div");
-    WINBTNS.className = "u4aFrameWinBtns";
+    // 스페이서 — 제목과 창 버튼 사이를 벌려 버튼을 우측으로 민다
+    const SPACER = document.createElement("span");
+    SPACER.className = "u4a-titlebar__spacer";
+    HEADER.appendChild(SPACER);
 
-    // 최소화 (구 BUTTON1: sap-icon://less)
+    // 최소화 (구 BUTTON1)
     const LESS_BTN = document.createElement("button");
-    LESS_BTN.className = "u4aFrameWinBtn min";
+    LESS_BTN.className = "u4a-winbtn";
     LESS_BTN.title = "Minimize";
     LESS_BTN.innerHTML = '<i class="fa-solid fa-window-minimize"></i>';
     LESS_BTN.addEventListener("click", function () {
         parent.CURRWIN.minimize();
     });
-    WINBTNS.appendChild(LESS_BTN);
+    HEADER.appendChild(LESS_BTN);
     oContr.ui.LESS_BTN = LESS_BTN;
 
-    // 최대화/복원 (구 BUTTON2 "maxWinBtn": sap-icon://header)
+    // 최대화/복원 (구 BUTTON2 "maxWinBtn")
     const MAX_WIN_BTN = document.createElement("button");
     MAX_WIN_BTN.id = "maxWinBtn";
-    MAX_WIN_BTN.className = "u4aFrameWinBtn max";
+    MAX_WIN_BTN.className = "u4a-winbtn";
     MAX_WIN_BTN.title = "Maximize";
     MAX_WIN_BTN.innerHTML = '<i class="fa-solid fa-window-maximize"></i>';
     MAX_WIN_BTN.addEventListener("click", function () {
@@ -75,23 +78,22 @@ export async function getView() {
         parent.CURRWIN.maximize();
 
     });
-    WINBTNS.appendChild(MAX_WIN_BTN);
+    HEADER.appendChild(MAX_WIN_BTN);
     oContr.ui.MAX_WIN_BTN = MAX_WIN_BTN;
 
-    // 닫기 (구 BUTTON3 "mainWinClose": sap-icon://decline)
+    // 닫기 (구 BUTTON3 "mainWinClose")
     const CLOSE_BTN = document.createElement("button");
     CLOSE_BTN.id = "mainWinClose";
-    CLOSE_BTN.className = "u4aFrameWinBtn close";
+    CLOSE_BTN.className = "u4a-winbtn u4a-winbtn--close";
     CLOSE_BTN.title = "Close";
     CLOSE_BTN.innerHTML = '<i class="fa-solid fa-xmark"></i>';
     CLOSE_BTN.addEventListener("click", function () {
         oAPP.attr.isPressWindowClose = "X";
         parent.CURRWIN.close();
     });
-    WINBTNS.appendChild(CLOSE_BTN);
+    HEADER.appendChild(CLOSE_BTN);
     oContr.ui.CLOSE_BTN = CLOSE_BTN;
 
-    HEADER.appendChild(WINBTNS);
     ROOT.appendChild(HEADER);
     /* ===== 헤더 끝 ===== */
 

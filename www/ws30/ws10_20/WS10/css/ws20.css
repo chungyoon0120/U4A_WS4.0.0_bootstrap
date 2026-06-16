@@ -261,11 +261,18 @@
 /* (A) 트리 툴바 (구 OverflowToolbar) — 헤더 배경 + 연파랑 버튼 (삭제만 빨강) */
 .u4aWs20TreeToolbar {
   flex: 0 0 auto;
-  display: flex; align-items: center; flex-wrap: wrap;
+  display: flex; align-items: center;
+  flex-wrap: nowrap;          /* 좁아져도 줄바꿈 X — 넘치면 ⋯ 메뉴로 접는다(U4AUI.attachOverflow) */
+  overflow: hidden;
   gap: 2px; padding: 4px 6px;
   background: var(--ws20-header-bg);
   border-bottom: 1px solid var(--ws20-line);
 }
+/* 툴바 항목은 줄어들지 않게(자연폭 유지) — 좁아지면 squish 대신 ⋯ 로 접힘 */
+.u4aWs20TreeToolbar > * { flex: 0 0 auto; }
+/* 오버플로로 숨겨진 항목 — u4a-btn-icon 의 display:inline-flex 가 [hidden] 을 덮으므로 명시적으로 숨김 */
+.u4aWs20TreeToolbar .u4a-btn-icon[hidden],
+.u4aWs20TreeToolbar .u4aWs20TreeTbSep[hidden] { display: none; }
 .u4aWs20TreeTbBtn {
   display: inline-flex; align-items: center; justify-content: center;
   width: 28px; height: 26px;
@@ -352,15 +359,27 @@
 }
 .u4aWs20TreeAggrIcon { font-size: 10px; color: var(--ws20-aggr); }
 
-/* 행 액션 (구 add/delete Icon) — hover 시 노출 */
+/* 행 액션 (구 add/delete Icon) — 원본은 Change 모드에서 항상 노출(visible:{/IS_EDIT}).
+   버튼은 designSetActionIcon 이 visible_add/delete 로 노드별 렌더를 이미 제어하므로,
+   렌더된 버튼은 항상 보이게 한다(hover 시 약간 강조). */
+/* 오른쪽 고정 액션 컬럼 — 2개 고정 슬롯([+][삭제]). 버튼/빈슬롯 동일 너비라
+   모든 행에서 +/삭제가 세로로 정렬된다. 좌측 구분선으로 "트랜잭션 컬럼"처럼 분리. */
 .u4aWs20TreeActions {
+  flex: 0 0 auto;
   display: inline-flex; align-items: center; gap: 2px;
-  visibility: hidden;
+  padding-left: 6px; margin-left: 4px;
+  border-left: 1px solid var(--ws20-line);
+  visibility: visible;
+  opacity: 0.85;
 }
-.u4aWs20TreeRow:hover .u4aWs20TreeActions { visibility: visible; }
+.u4aWs20TreeRow:hover .u4aWs20TreeActions { opacity: 1; }
+/* 빈 슬롯 — 버튼과 동일 너비로 자리만 차지(정렬 유지) */
+.u4aWs20TreeActSlot {
+  display: inline-block; width: 22px; height: 22px; flex: 0 0 auto;
+}
 .u4aWs20TreeActBtn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 20px; height: 20px;
+  width: 22px; height: 22px; flex: 0 0 auto;
   border: none; background: transparent; cursor: pointer;
   border-radius: 3px; font-size: 13px; line-height: 1;
   font-family: inherit;
@@ -497,14 +516,17 @@
 }
 .u4aWs20AttrTbBtn:hover { background: var(--ws20-btn-hover); }
 .u4aWs20AttrTbBtn.accept { color: var(--success); }
-/* Show Changed Items — 구 ToggleButton type:Emphasized(액센트 채움) */
+/* Show Changed Items — 구 ToggleButton type:Emphasized(액센트 채움)
+   글자색은 액센트 채움 위 흰색(공통 .u4a-btn--emphasized 와 동일). 구 var(--selected-text)=var(--accent)
+   라 파랑 배경 위 파랑 글자가 되어 텍스트가 안 보이던 버그 수정. */
 .u4aWs20AttrTbBtn.emph {
-  background: var(--ws20-accent); color: var(--selected-text); font-weight: 600;
+  background: var(--ws20-accent); color: var(--c-white); font-weight: 600;
   border-color: var(--ws20-accent);
 }
+.u4aWs20AttrTbBtn.emph i { color: var(--c-white); }
 .u4aWs20AttrTbBtn.emph:hover { filter: brightness(1.1); }
 .u4aWs20AttrTbBtn.emph.pressed {
-  background: var(--accent-strong); color: var(--selected-text); border-color: var(--accent-strong);
+  background: var(--accent-strong); color: var(--c-white); border-color: var(--accent-strong);
 }
 
 /* (f) 속성 행 스크롤 영역 */

@@ -379,6 +379,85 @@
         };  //attribute의 변경된건 수집 처리.
     }
 
+    // ── 저장 payload 빌더 (구 design/js/main.js getSaveData/parseTree2Tab/setUIPOSIT) ──
+    //   design/js/main.js 가 이 렌더러에 정의되지 않아 getSaveData 미정의 → 저장 실패.
+    //   sap-free 라 HTML5 포트로 가드 이식(이미 있으면 스킵).
+
+    // tree(zTREE 재귀) → flat tab 변환. (원본 main.js 270행 1:1, $.each → 평순회)
+    if (typeof oAPP.fn.parseTree2Tab !== "function") {
+        oAPP.fn.parseTree2Tab = function (e) {
+            var a = [];
+            var t = function (arr) {
+                if (!arr) { return; }
+                for (var k = 0; k < arr.length; k++) {
+                    var o = arr[k];
+                    if (o.zTREE) { t(o.zTREE); delete o.zTREE; }
+                    a.push(o);
+                }
+            };
+            t(JSON.parse(JSON.stringify(e || [])));
+            return a;
+        };
+    }
+
+    // 순번(POSIT) 재귀 재정의. (원본 main.js 1079행 1:1)
+    if (typeof oAPP.fn.setUIPOSIT !== "function") {
+        oAPP.fn.setUIPOSIT = function (it_tree) {
+            if (!it_tree || it_tree.length === 0) { return; }
+            for (var i = 0, l = it_tree.length; i < l; i++) {
+                oAPP.attr.POSIT += 1;
+                it_tree[i].POSIT = oAPP.attr.POSIT;
+            }
+            for (var i2 = 0, l2 = it_tree.length; i2 < l2; i2++) {
+                oAPP.fn.setUIPOSIT(it_tree[i2].zTREE);
+            }
+        };
+    }
+
+    // UI 저장 정보 구성. (원본 main.js 1106행 1:1 — 일부 널가드 추가)
+    if (typeof oAPP.fn.getSaveData !== "function") {
+        oAPP.fn.getSaveData = function () {
+
+            oAPP.attr.POSIT = 0;
+            //UI POSITION 재매핑
+            oAPP.fn.setUIPOSIT(oAPP.attr.oModel.oData.zTREE);
+            oAPP.attr.POSIT = 0;
+
+            //design tree → ZY04A0014 (POSITION 정렬)
+            var lt_0014 = oAPP.fn.parseTree2Tab(oAPP.attr.oModel.oData.zTREE);
+            lt_0014.sort(function (a, b) { return a.POSIT - b.POSIT; });
+
+            //어플리케이션 정보 구조 + 상태정보 매핑
+            var ls_0010 = oAPP.fn.crtStru0010();
+            oAPP.fn.moveCorresponding(oAPP.attr.appInfo || {}, ls_0010);
+
+            //ROOT(DOCUMENT) 입력정보를 ZTU4A0010 필드에 매핑
+            var aRoot = (oAPP.attr.prev && oAPP.attr.prev.ROOT && oAPP.attr.prev.ROOT._T_0015) || [];
+            for (var i = 0, l = aRoot.length; i < l; i++) {
+                var ls_ua003 = oAPP.DATA.LIB.T_9011.find(function (a) { return a.CATCD === "UA003" && a.ITMCD === aRoot[i].UIATK; });
+                if (ls_ua003) { ls_0010[ls_ua003.FLD08] = aRoot[i].UIATV; }
+            }
+
+            //UI attr 변경분 수집
+            var lt_0015 = oAPP.fn.getAttrChangedData();
+
+            var oA = oAPP.DATA.APPDATA || {};
+            return {
+                "TU4A0010": ls_0010,
+                "YU4A0014": lt_0014,
+                "YU4A0015": lt_0015,
+                "T_EDIT": oA.T_EDIT,
+                "S_ERHTML": oA.S_ERHTML,
+                "T_CEVT": oA.T_CEVT,
+                "T_JSLK": oA.T_JSLK,
+                "T_CSLK": oA.T_CSLK,
+                "T_DESC": oA.T_DESC,
+                "S_WSO": oA.S_WSO,
+                "T_SKLE": oA.T_SKLE
+            };
+        };
+    }
+
     // random key 생성. (원본 main.js 1755행 1:1 — iframe GF_getRandomKey 참조)
     if (typeof oAPP.fn.getRandomKey !== "function") {
         oAPP.fn.getRandomKey = function () {

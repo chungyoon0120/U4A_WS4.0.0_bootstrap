@@ -271,13 +271,21 @@
      * ---------------------------------------------------------------------
      *  메인프레임 showMessage 의 KIND 30 분기는 아직 sap.m.MessageBox 의존이라
      *  UI5 제거 환경에서 동작하지 않는다. 창 닫기(ev_Logout) 등 셸 경로에서 쓰도록
-     *  테마 native <dialog class="u4a-msgbox"> 기반 확인창을 제공한다.
-     *  fnCallback 은 원본 MessageBox onClose 와 동일하게 "YES"/"NO" 를 전달.
+     *  테마 native <dialog class="u4a-dialog"> 기반 확인창을 제공한다(서버리스트 메시지박스와 동일 디자인).
+     *  fnCallback 은 원본 MessageBox onClose 와 동일하게 액션("YES"/"NO"/"CANCEL")을 전달.
      *  @param {string} sType  메시지 타입(S/E/I/W) — 제목 색/텍스트
      *  @param {string} sMsg   본문
-     *  @param {Function} fnCallback (action:"YES"|"NO")
+     *  @param {Function} fnCallback (action)
+     *  @param {Array}   [aBtns] 버튼 정의 [{act,label,emphasized}] — 생략 시 YES/NO.
+     *                          3버튼(YES/NO/CANCEL) 등 커스텀 가능(구 showMessage KIND 40 대체).
      ************************************************************************/
-    oAPP.common.fnConfirmBox = function (sType, sMsg, fnCallback) {
+    oAPP.common.fnConfirmBox = function (sType, sMsg, fnCallback, aBtns) {
+
+        // 기본 버튼셋(YES/NO) — aBtns 로 3버튼 등 커스터마이즈 가능
+        if (!aBtns || !aBtns.length) {
+            aBtns = [{ act: "YES", label: "Yes", emphasized: true }, { act: "NO", label: "No" }];
+        }
+        var bHasCancel = aBtns.some(function (b) { return b.act === "CANCEL"; });
 
         function lf_done(sAct) {
             if (typeof fnCallback === "function") { try { fnCallback(sAct); } catch (e) { } }
@@ -289,45 +297,55 @@
         if (!oDlg || typeof oDlg.showModal !== "function") {
             var bOk = false;
             try { bOk = window.confirm(sMsg || ""); } catch (e2) { bOk = true; }
-            lf_done(bOk ? "YES" : "NO");
+            lf_done(bOk ? "YES" : (bHasCancel ? "CANCEL" : "NO"));
             return;
         }
 
-        // 제목 텍스트 (showMessage 와 동일 메시지클래스 — 없으면 영문 폴백)
-        var oTitleMap = { S: ["D86", "Success"], E: ["B93", "Error"], W: ["B89", "Warning"], I: ["B86", "Information"] };
-        var aT = oTitleMap[sType] || oTitleMap.I;
+        // 제목 텍스트 (showMessage 와 동일 메시지클래스 — 없으면 영문 폴백) +
+        //   타입별 아이콘 — 서버리스트 fnShowMessageBox(.u4a-dialog) 와 동일 디자인으로 통일.
+        var oTypeMap = {
+            S: ["D86", "Success", "circle-check"],
+            E: ["B93", "Error", "circle-xmark"],
+            W: ["B89", "Warning", "triangle-exclamation"],
+            I: ["B86", "Information", "circle-info"],
+            C: ["B86", "Information", "circle-question"]
+        };
+        var aT = oTypeMap[sType] || oTypeMap.I;
         var sTitle = aT[1];
         try { sTitle = APPCOMMON.fnGetMsgClsText("/U4A/CL_WS_COMMON", aT[0]) || aT[1]; } catch (e) { }
 
-        // 버튼 텍스트 — Yes/No 메시지코드 불확실(미존재 시 "경로|코드" 노출) → 리터럴 유지
-        var sYes = "Yes", sNo = "No";
-
-        oDlg.className = "u4a-msgbox";
+        // 설정/서버리스트 다이얼로그와 동일한 .u4a-dialog 구조(헤더 아이콘 + 본문 + 푸터).
+        oDlg.className = "u4a-dialog";
+        oDlg.style.width = "min(28rem, 92vw)";
         oDlg.innerHTML =
-            '<div class="u4a-msgbox__title" data-type="' + (sType || "I") + '"></div>' +
-            '<div class="u4a-msgbox__body"></div>' +
-            '<div class="u4a-msgbox__footer">' +
-            '  <button type="button" class="u4a-btn u4a-btn--emphasized" data-act="YES"></button>' +
-            '  <button type="button" class="u4a-btn" data-act="NO"></button>' +
-            '</div>';
-        oDlg.querySelector(".u4a-msgbox__title").textContent = sTitle;
-        oDlg.querySelector(".u4a-msgbox__body").textContent = sMsg || "";
-        oDlg.querySelector('[data-act="YES"]').textContent = sYes;
-        oDlg.querySelector('[data-act="NO"]').textContent = sNo;
+            '<div class="u4a-dialog__header" data-type="' + (sType || "I") + '">' +
+                '<i class="fa-solid fa-' + aT[2] + '"></i><span></span>' +
+            '</div>' +
+            '<div class="u4a-dialog__body" style="white-space:pre-wrap;line-height:1.45;"></div>' +
+            '<div class="u4a-dialog__footer"></div>';
+        oDlg.querySelector(".u4a-dialog__header span").textContent = sTitle;
+        oDlg.querySelector(".u4a-dialog__body").textContent = sMsg || "";
 
         function lf_close(sAct) {
             try { oDlg.close(); } catch (e) { }
             try { oDlg.remove(); } catch (e) { }
             lf_done(sAct);
         }
-        oDlg.querySelector('[data-act="YES"]').addEventListener("click", function () { lf_close("YES"); });
-        oDlg.querySelector('[data-act="NO"]').addEventListener("click", function () { lf_close("NO"); });
-        // ESC(취소) → NO
-        oDlg.addEventListener("cancel", function (e) { e.preventDefault(); lf_close("NO"); });
+
+        var oFooter = oDlg.querySelector(".u4a-dialog__footer");
+        aBtns.forEach(function (b) {
+            var oBtn = document.createElement("button");
+            oBtn.type = "button";
+            oBtn.className = "u4a-btn" + (b.emphasized ? " u4a-btn--emphasized" : "");
+            oBtn.textContent = b.label || b.act;
+            oBtn.addEventListener("click", function () { lf_close(b.act); });
+            oFooter.appendChild(oBtn);
+        });
+        // ESC → CANCEL(있으면) 아니면 NO
+        oDlg.addEventListener("cancel", function (e) { e.preventDefault(); lf_close(bHasCancel ? "CANCEL" : "NO"); });
 
         try { document.body.appendChild(oDlg); oDlg.showModal(); } catch (e) {
-            // showModal 실패 시 폴백
-            lf_close(window.confirm(sMsg || "") ? "YES" : "NO");
+            lf_close(window.confirm(sMsg || "") ? "YES" : (bHasCancel ? "CANCEL" : "NO"));
         }
     };
 
@@ -349,6 +367,123 @@
         var oAppNmInput = document.getElementById("AppNmInput");
         var sAppID = oAppNmInput ? oAppNmInput.value : "";
         oAPP.fn.fnOnEnterDispChangeMode(sAppID, "X"); // [async]
+    };
+
+    /************************************************************************
+     * [OVERRIDE] WS10 트랜잭션 — App 생성 (구 oAPP.events.ev_AppCreate [ws_events.js])
+     * ---------------------------------------------------------------------
+     *  WS3.0 패턴 이식. AppNmInput(DOM) 값을 읽어 이름검증 → 서버 존재여부 확인 후
+     *  HTML5 생성 팝업(design/js/createApplicationPopup.js)을 띄운다. 원본의
+     *  sap.ui.getCore().byId / fnCheckAppName(UI5) 의존만 DOM 으로 치환, 흐름은 보존.
+     ************************************************************************/
+    oAPP.events.ev_AppCreate = function () {
+
+        // busy 키고 Lock 걸기
+        oAPP.common.fnSetBusyLock("X");
+
+        // Create, Copy 일 경우에만 App Name MaxLength Check 수행.
+        var bCheckAppNm = oAPP.fn.fnCheckAppName(true);
+        if (!bCheckAppNm) {
+            oAPP.common.fnSetBusyLock("");
+            return;
+        }
+
+        var oAppNmInput = document.getElementById("AppNmInput");
+        var sAppID = oAppNmInput ? oAppNmInput.value : "";
+
+        var oFormData = new FormData();
+        oFormData.append("APPID", sAppID);
+
+        // 서버에서 App 정보를 구한다(존재 여부 확인).
+        ajax_init_prc(oFormData, lf_success);
+
+        function lf_success(oAppInfo) {
+
+            // MSGTY 가 "" 이면 이미 등록된 application.
+            if (oAppInfo.MSGTY == "") {
+                // 035 It is already registered application information.
+                var sMsg = APPCOMMON.fnGetMsgClsText("/U4A/MSG_WS", "035");
+                APPCOMMON.fnShowFloatingFooterMsg("E", parent.getCurrPage(), sMsg);
+                oAPP.common.fnSetBusyLock("");
+                return;
+            }
+
+            // 생성 팝업 호출(미로드 시 $.getScript 로 로드 후 호출).
+            if (!oAPP.fn.createApplicationPopup) {
+                $.getScript("design/js/createApplicationPopup.js", function () {
+                    try { oAPP.fn.createApplicationPopup(sAppID); }
+                    catch (e) { APPCOMMON.fnShowFloatingFooterMsg("E", parent.getCurrPage(), "Create 오류: " + (e && e.message)); }
+                    oAPP.common.fnSetBusyLock("");
+                });
+                return;
+            }
+
+            try { oAPP.fn.createApplicationPopup(sAppID); }
+            catch (e) { APPCOMMON.fnShowFloatingFooterMsg("E", parent.getCurrPage(), "Create 오류: " + (e && e.message)); }
+            oAPP.common.fnSetBusyLock("");
+        }
+    };
+
+    /************************************************************************
+     * [OVERRIDE] Application Name 입력 체크 (구 oAPP.fn.fnCheckAppName [ws_fn_02.js])
+     * ---------------------------------------------------------------------
+     *  원본은 sap.ui.getCore().byId("AppNmInput").getValue() + fnCheckValidAppName
+     *  (jQuery.sap.startsWith 의존). UI5 제거 환경에서 동작하도록 DOM 값을 읽고
+     *  정합성(필수/특수문자/길이/Z·Y 시작)을 인라인 검증한다.
+     ************************************************************************/
+    oAPP.fn.fnCheckAppName = function (bAppMaxLengthCheck) {
+
+        var oAppNmInput = document.getElementById("AppNmInput");
+        if (!oAppNmInput) { return false; }
+
+        var sValue = oAppNmInput.value;
+        var sCurrPage = parent.getCurrPage();
+        var sLangu = (parent.process.USERINFO || {}).LANGU;
+
+        function lf_err(sMsg) { APPCOMMON.fnShowFloatingFooterMsg("E", sCurrPage, sMsg); return false; }
+
+        // 필수 입력.
+        if (typeof sValue !== "string" || sValue === "") {
+            // 273 Application name is required.
+            return lf_err(parent.WSUTIL.getWsMsgClsTxt(sLangu, "ZMSG_WS_COMMON_001", "273"));
+        }
+
+        // 특수문자 불가(영숫자/언더스코어 외).
+        if (/[^\w]/.test(sValue)) {
+            // 278 Special characters are not allowed.
+            return lf_err(APPCOMMON.fnGetMsgClsText("/U4A/MSG_WS", "278"));
+        }
+
+        // Create/Copy 시에만 길이 체크.
+        if (bAppMaxLengthCheck && sValue.length > oAPP.attr.iAppNameMaxLength) {
+            // 115 Application ID can only be 15 characters or less !!
+            return lf_err(APPCOMMON.fnGetMsgClsText("/U4A/MSG_WS", "115"));
+        }
+
+        // Z 또는 Y 로 시작해야 함.
+        var sUp = sValue.toUpperCase();
+        if (sUp.charAt(0) !== "Z" && sUp.charAt(0) !== "Y") {
+            // 009 The application ID must start with Z or Y.
+            return lf_err(APPCOMMON.fnGetMsgClsText("/U4A/MSG_WS", "009"));
+        }
+
+        return true;
+    };
+
+    /************************************************************************
+     * [OVERRIDE] 생성 성공 후 편집 모드 전환 (구 onAppCrAndChgMode [ws_common.js])
+     * ---------------------------------------------------------------------
+     *  원본은 sap.ui.getCore().byId("AppNmInput"/"appChangeBtn") + firePress.
+     *  HTML5: DOM input 에 APPID 세팅 후 ev_AppChange(WS20 Change 진입) 직접 호출.
+     ************************************************************************/
+    window.onAppCrAndChgMode = function (sAppID) {
+        var oAppInput = document.getElementById("AppNmInput");
+        if (!oAppInput) { return; }
+        sAppID = (sAppID || "").toUpperCase();
+        oAppInput.value = sAppID;
+        try { oAPP.events.ev_AppChange(); } catch (e) {
+            if (typeof console !== "undefined") { console.warn("[WS10] onAppCrAndChgMode error", e); }
+        }
     };
 
     /************************************************************************

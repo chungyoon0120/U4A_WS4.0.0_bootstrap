@@ -168,8 +168,70 @@ oAPP.views = window?.oAPP?.views || {};
             newMsg = MSG;
         }
 
-        // UI5 필요한 라이브러리를 로드한다.
-        lf_loadLibrary(oUI5);
+        // [HTML5] 메시지 시스템 통일 — 토스트/팝업을 테마 공통 컴포넌트(.u4a-toast/.u4a-msgbox)로
+        //   렌더한다. 구 oUI5.m.MessageToast/MessageBox 의존 제거(oUI5 인자 무시). KIND 99(네이티브)만 유지.
+        //   기존 모든 parent.showMessage(sap, KIND, TYPE, MSG, cb) 호출부가 그대로 동작.
+        function lf_sound(t) {
+            try { if (t === "S") { setSoundMsg("01"); } else if (t === "W" || t === "E") { setSoundMsg("02"); } } catch (e) { }
+        }
+        // 토스트(구 MessageToast) — 싱글톤 .u4a-toast, 3초 자동 숨김
+        function _u4aToast(sMsg) {
+            try {
+                var oT = document.getElementById("u4aWsToast");
+                if (!oT) {
+                    oT = document.createElement("div");
+                    oT.id = "u4aWsToast";
+                    oT.className = "u4a-toast";
+                    oT.setAttribute("role", "alert");
+                    document.body.appendChild(oT);
+                }
+                oT.textContent = sMsg || "";
+                oT.dataset.show = "true";
+                if (oT.__t) { clearTimeout(oT.__t); }
+                oT.__t = setTimeout(function () { oT.dataset.show = "false"; }, 3000);
+            } catch (e) { try { alert(sMsg); } catch (e2) { } }
+        }
+        // 메시지 팝업(구 MessageBox) — 테마 native <dialog class="u4a-msgbox">.
+        //   aBtns: [{act,label,emphasized}] → 콜백에 UI5 Action 과 동일한 act("OK"/"YES"/"NO"/"CANCEL") 전달.
+        function _u4aMsgBox(sType, sTitle, sMsg, aBtns, fnCb) {
+            function lf_cb(sAct) { if (typeof fnCb === "function") { try { fnCb(sAct); } catch (e) { } } }
+            var bCancel = aBtns.some(function (b) { return b.act === "CANCEL"; });
+            var bNo = aBtns.some(function (b) { return b.act === "NO"; });
+            var oDlg;
+            try { oDlg = document.createElement("dialog"); } catch (e) { oDlg = null; }
+            if (!oDlg || typeof oDlg.showModal !== "function") {
+                if (aBtns.length <= 1) { try { alert(sMsg); } catch (e) { } lf_cb("OK"); return; }
+                var bOk = false; try { bOk = confirm(sMsg); } catch (e) { }
+                lf_cb(bOk ? "YES" : (bCancel ? "CANCEL" : "NO")); return;
+            }
+            // 서버리스트/셸/로그인 메시지박스와 동일한 .u4a-dialog(헤더 아이콘 + 본문 + 푸터) 디자인으로 통일.
+            var oTypeIcon = { C: "circle-question", S: "circle-check", E: "circle-xmark", W: "triangle-exclamation", I: "circle-info" };
+            oDlg.className = "u4a-dialog";
+            oDlg.style.width = "min(28rem, 92vw)";
+            oDlg.innerHTML =
+                '<div class="u4a-dialog__header" data-type="' + (sType || "I") + '">' +
+                    '<i class="fa-solid fa-' + (oTypeIcon[sType] || "circle-info") + '"></i><span></span>' +
+                '</div>' +
+                '<div class="u4a-dialog__body" style="white-space:pre-wrap;line-height:1.45;"></div>' +
+                '<div class="u4a-dialog__footer"></div>';
+            oDlg.querySelector(".u4a-dialog__header span").textContent = sTitle || "";
+            oDlg.querySelector(".u4a-dialog__body").textContent = sMsg || "";
+            function lf_close(sAct) { try { oDlg.close(); } catch (e) { } try { oDlg.remove(); } catch (e) { } lf_cb(sAct); }
+            var oFooter = oDlg.querySelector(".u4a-dialog__footer");
+            aBtns.forEach(function (b) {
+                var oBtn = document.createElement("button");
+                oBtn.type = "button";
+                oBtn.className = "u4a-btn" + (b.emphasized ? " u4a-btn--emphasized" : "");
+                oBtn.textContent = b.label || b.act;
+                oBtn.addEventListener("click", function () { lf_close(b.act); });
+                oFooter.appendChild(oBtn);
+            });
+            oDlg.addEventListener("cancel", function (e) { e.preventDefault(); lf_close(bCancel ? "CANCEL" : (bNo ? "NO" : "OK")); });
+            try { document.body.appendChild(oDlg); oDlg.showModal(); } catch (e) {
+                if (aBtns.length <= 1) { try { alert(sMsg); } catch (e2) { } lf_close("OK"); }
+                else { var ok = false; try { ok = confirm(sMsg); } catch (e2) { } lf_close(ok ? "YES" : (bCancel ? "CANCEL" : "NO")); }
+            }
+        }
 
         // 메시지 타입별 텍스트
         let oMsgcls = {
@@ -193,187 +255,33 @@ oAPP.views = window?.oAPP?.views || {};
 
         switch (KIND) {
 
-            case 10: // MessageToast
+            case 10: // 토스트 (구 MessageToast)
 
-                // 메시지 토스트 옵션
-                var oMsgToastOpts = {
-                    width: "auto",
-                    my: "center center",
-                    at: "center center",
-                };
-
-                oUI5.m.MessageToast.show(newMsg, oMsgToastOpts);
+                _u4aToast(newMsg);
 
                 break;
 
-            case 20: // MessageBox (1 button: OK)
+            case 20: // 1버튼 (OK) — 구 MessageBox 1버튼
 
-                // 메시지 박스 옵션
-                var oMsgBoxOpts = {
-                    title: "",
-                    onClose: fn_callback,
-                    actions: [
-                        oUI5.m.MessageBox.Action.OK,
-                    ],
-                    emphasizedAction: oUI5.m.MessageBox.Action.OK
-                };
-
-                switch (TYPE) {
-
-                    case "S":
-
-                        setSoundMsg("01"); // success
-
-                        oMsgBoxOpts.title = oMsgcls.S; // Success
-
-                        oUI5.m.MessageBox.success(newMsg, oMsgBoxOpts);
-
-                        break;
-
-                    case "I":
-
-                        oMsgBoxOpts.title = oMsgcls.I; // Information
-
-                        oUI5.m.MessageBox.information(newMsg, oMsgBoxOpts);
-
-                        break;
-
-                    case "W":
-
-                        setSoundMsg("02"); // error
-
-                        oMsgBoxOpts.title = oMsgcls.W; // Warning
-
-                        oUI5.m.MessageBox.warning(newMsg, oMsgBoxOpts);
-
-                        break;
-
-                    case "E":
-
-                        setSoundMsg("02"); // error
-
-                        oMsgBoxOpts.title = oMsgcls.E; // Error
-
-                        oUI5.m.MessageBox.error(newMsg, oMsgBoxOpts);
-
-                        break;
-
-                }
+                lf_sound(TYPE);
+                _u4aMsgBox(TYPE, oMsgcls[TYPE] || oMsgcls.WORKSPACE, newMsg,
+                    [{ act: "OK", label: "OK", emphasized: true }], fn_callback);
 
                 break;
 
-            case 30: // MessageBox (2 button: YES, NO)
+            case 30: // 2버튼 (YES/NO) — 구 MessageBox 2버튼
 
-                // 메시지 박스 옵션
-                var oMsgBoxOpts = {
-                    title: "",
-                    onClose: fn_callback,
-                    initialFocus: null,
-                    actions: [
-                        oUI5.m.MessageBox.Action.YES,
-                        oUI5.m.MessageBox.Action.NO,
-                    ],
-                    emphasizedAction: oUI5.m.MessageBox.Action.YES
-                };
-
-                switch (TYPE) {
-
-                    case "S":
-
-                        setSoundMsg("01"); // success
-
-                        oMsgBoxOpts.title = oMsgcls.S; // Success
-
-                        oUI5.m.MessageBox.success(newMsg, oMsgBoxOpts);
-
-                        break;
-
-                    case "I":
-
-                        oMsgBoxOpts.title = oMsgcls.I; // Information
-
-                        oUI5.m.MessageBox.information(newMsg, oMsgBoxOpts);
-
-                        break;
-
-                    case "W":
-
-                        setSoundMsg("02"); // error
-
-                        oMsgBoxOpts.title = oMsgcls.W; // Warning
-
-                        oUI5.m.MessageBox.warning(newMsg, oMsgBoxOpts);
-
-                        break;
-
-                    case "E":
-
-                        setSoundMsg("02"); // error
-
-                        oMsgBoxOpts.title = oMsgcls.E; // Error
-
-                        oUI5.m.MessageBox.error(newMsg, oMsgBoxOpts);
-
-                        break;
-
-                }
+                lf_sound(TYPE);
+                _u4aMsgBox(TYPE, oMsgcls[TYPE] || oMsgcls.WORKSPACE, newMsg,
+                    [{ act: "YES", label: "Yes", emphasized: true }, { act: "NO", label: "No" }], fn_callback);
 
                 break;
 
-            case 40: // MessageBox (3 button: YES, NO, CANCLE)
+            case 40: // 3버튼 (YES/NO/CANCEL) — 구 MessageBox 3버튼
 
-                // 메시지 박스 옵션
-                var oMsgBoxOpts = {
-                    title: "",
-                    onClose: fn_callback,
-                    initialFocus: null,
-                    actions: [
-                        oUI5.m.MessageBox.Action.YES,
-                        oUI5.m.MessageBox.Action.NO,
-                        oUI5.m.MessageBox.Action.CANCEL,
-                    ],
-                    emphasizedAction: oUI5.m.MessageBox.Action.YES
-                };
-
-                switch (TYPE) {
-
-                    case "S":
-
-                        setSoundMsg("01"); // success
-
-                        oMsgBoxOpts.title = oMsgcls.S; // Success
-
-                        oUI5.m.MessageBox.success(newMsg, oMsgBoxOpts);
-
-                        break;
-
-                    case "I":
-
-                        oMsgBoxOpts.title = oMsgcls.I; // Information
-
-                        oUI5.m.MessageBox.information(newMsg, oMsgBoxOpts);
-
-                        break;
-
-                    case "W":
-
-                        oMsgBoxOpts.title = oMsgcls.W; // Warning
-
-                        oUI5.m.MessageBox.warning(newMsg, oMsgBoxOpts);
-
-                        break;
-
-                    case "E":
-
-                        setSoundMsg("02"); // error
-
-                        oMsgBoxOpts.title = oMsgcls.W; // Error
-
-                        oUI5.m.MessageBox.error(newMsg, oMsgBoxOpts);
-
-                        break;
-
-                }
+                lf_sound(TYPE);
+                _u4aMsgBox(TYPE, oMsgcls[TYPE] || oMsgcls.WORKSPACE, newMsg,
+                    [{ act: "YES", label: "Yes", emphasized: true }, { act: "NO", label: "No" }, { act: "CANCEL", label: "Cancel" }], fn_callback);
 
                 break;
 
@@ -416,19 +324,7 @@ oAPP.views = window?.oAPP?.views || {};
 
         }
 
-        // (local function) UI5 라이브러리 로드
-        function lf_loadLibrary(oUI5) {
-
-            // 메시지박스
-            if (!oUI5) {
-                return;
-            }
-
-            if (!oUI5.m.MessageBox) {
-                oUI5.ui.requireSync("sap/m/MessageBox");
-            }
-
-        } // end of lf_loadLibrary
+        // [HTML5] 구 lf_loadLibrary(UI5 sap.m.MessageBox requireSync) 제거 — 더 이상 UI5 미사용.
 
     }; // end of oWS.utill.fn.showMessage
 

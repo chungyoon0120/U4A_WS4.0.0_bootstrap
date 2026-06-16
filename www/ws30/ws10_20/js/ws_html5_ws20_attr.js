@@ -263,6 +263,10 @@
             //부모의 구조에 change 여부 업데이트 처리.
             parent.setAppInfo(oAPP.attr.appInfo);
 
+            //[HTML5] 변경 즉시 모델/앱헤더 반영 → 상태표시 Active→Inactive (원본 UX)
+            try { oAPP.common.fnSetModelProperty("/WS20/APP/IS_CHAG", "X"); } catch (e) { }
+            try { if (oAPP.fn.fnUpdateWs20AppHeader) { oAPP.fn.fnUpdateWs20AppHeader(); } } catch (e) { }
+
         };  //화면에서 UI추가, 이동, 삭제 및 attr 변경시 변경 flag 처리.
     }
 
@@ -1976,6 +1980,16 @@
             icon: "sap-icon://filter"
         };
 
+        //객체 전환 시 필터가 해제되므로(press:false) Show Changed Items 버튼 시각도 모델과 동기화한다.
+        var oFltBtn = document.getElementById("ws20AttrShowChangedBtn");
+        if (oFltBtn) {
+            oFltBtn.classList.remove("pressed");
+            var oFltBtnTxt = oFltBtn.querySelector("span");
+            if (oFltBtnTxt) { oFltBtnTxt.textContent = _wsMsg("490", "Show Changed Items"); }
+            var oFltBtnIco = oFltBtn.querySelector("i");
+            if (oFltBtnIco) { oFltBtnIco.className = "fa-solid fa-filter"; }
+        }
+
         oAPP.attr.oModel.oData.T_ATTR = [];
 
         //DOCUMENT를 선택한 경우.
@@ -2701,11 +2715,16 @@
             }
 
             //화면에서 UI추가, 이동, 삭제 및 attr 변경시 변경 flag 처리. (원본 attrChangeProc 1912행)
+            //  주의: setChangeFlag 본체는 design/js/main.js 가 먼저 정의(IS_CHAG="X"+setAppInfo)하므로
+            //  여기서 헤더/상태 갱신을 직접 호출해야 한다(원본은 sap 모델 바인딩이 자동 갱신했음).
             try {
                 oAPP.fn.setChangeFlag();
             } catch (e) {
                 console.warn("[HTML5][WS20][attr] setChangeFlag skip:", e && e.message);
             }
+            // 변경 즉시 모델/앱헤더 반영 → 상태 Active→Inactive
+            try { oAPP.common.fnSetModelProperty("/WS20/APP/IS_CHAG", "X"); } catch (e) { }
+            try { if (oAPP.fn.fnUpdateWs20AppHeader) { oAPP.fn.fnUpdateWs20AppHeader(); } } catch (e) { }
 
             //(원본 1920행 checkPropertyValue(designTreeData.js): 입력값 점검 모듈 —
             // parent.require 로드 가능시에만 수행)
@@ -2953,6 +2972,9 @@
 
                     //화면에서 UI추가, 이동, 삭제 및 attr 변경시 변경 flag 처리.
                     oAPP.fn.setChangeFlag();
+                    // 변경 즉시 상태 Active→Inactive 반영
+                    try { oAPP.common.fnSetModelProperty("/WS20/APP/IS_CHAG", "X"); } catch (e2) { }
+                    try { if (oAPP.fn.fnUpdateWs20AppHeader) { oAPP.fn.fnUpdateWs20AppHeader(); } } catch (e2) { }
 
                     //모델 /uiinfo/DESC 동기화.
                     if (oAPP.attr.oModel.oData.uiinfo) {
@@ -3031,7 +3053,8 @@
         FLT.className = "u4aWs20AttrTbBtn emph";
         //815 변경된 항목만 필터링하여 표시...
         FLT.title = _wsMsg("815", "Show only changed Property/Event/Aggregation items.");
-        FLT.textContent = _wsMsg("490", "Show Changed Items");
+        //원본(ToggleButton)과 동일하게 깔때기(필터) 아이콘 + 텍스트. (아이콘/텍스트 분리 — 토글 시 텍스트만 교체)
+        FLT.innerHTML = '<i class="fa-solid fa-filter"></i><span>' + _wsMsg("490", "Show Changed Items") + '</span>';
         FLT.addEventListener("click", function () {
 
             try { parent.setBusy && parent.setBusy("X"); } catch (e) { }
@@ -3043,10 +3066,18 @@
 
                 sFilt.press = !sFilt.press;
 
-                //필터 버튼 text, icon 변경 처리. (원본 setButtonState: 490/491)
-                FLT.textContent = sFilt.press
-                    ? _wsMsg("491", "Show All Items")
-                    : _wsMsg("490", "Show Changed Items");
+                //필터 버튼 text, icon 변경 처리. (원본 setButtonState: 490/491) — 아이콘은 유지하고 텍스트만 교체.
+                var oFltTxt = FLT.querySelector("span");
+                var oFltIco = FLT.querySelector("i");
+                if (oFltTxt) {
+                    oFltTxt.textContent = sFilt.press
+                        ? _wsMsg("491", "Show All Items")
+                        : _wsMsg("490", "Show Changed Items");
+                }
+                //켜짐 = 필터 적용 중 → "필터 해제(전체 보기)" 의미의 아이콘으로 토글
+                if (oFltIco) {
+                    oFltIco.className = sFilt.press ? "fa-solid fa-filter-circle-xmark" : "fa-solid fa-filter";
+                }
                 FLT.classList.toggle("pressed", sFilt.press);
 
                 //ui의 변경된 속성값 필터 처리 / 해제 (changedDataFilter 로직의 단순 필터).

@@ -94,7 +94,7 @@
         disconnected: _fa("plug-circle-xmark"), connected: _fa("plug-circle-check"),
         eye: _fa("eye"), eyeSlash: _fa("eye-slash"), pin: _fa("thumbtack"),
         zoom: _fa("magnifying-glass-plus"), search: _fa("magnifying-glass"), power: _fa("power-off"),
-        caret: _fa("chevron-down"), clear: _fa("xmark")
+        caret: _fa("chevron-down"), clear: _fa("xmark"), overflow: _fa("ellipsis")
     };
 
     /********************************************************************
@@ -221,7 +221,9 @@
     //   fnOnEnterDispChangeMode(서버조회) → fnOnMoveToPage("WS20") → WS20 렌더.
     //   ev_NewWindow(New Window/Ctrl+N) → parent.onNewWindow()(메인프레임 새 창 — Electron,
     //   sap 무관). ws_events.js 의 원본 핸들러 그대로 호출.
-    var WIRED_EVENTS = { ev_AppDisplay: 1, ev_AppChange: 1, ev_NewWindow: 1 };
+    //   Create(Ctrl+F12/버튼) → ev_AppCreate → 이름검증·존재확인 후 HTML5 생성 팝업
+    //   (design/js/createApplicationPopup.js). ws_html5_shell.js override 참조.
+    var WIRED_EVENTS = { ev_AppCreate: 1, ev_AppDisplay: 1, ev_AppChange: 1, ev_NewWindow: 1 };
     function _invoke(sName, sLabel) {
         if (WIRED_EVENTS[sName] && window.oAPP && oAPP.events && typeof oAPP.events[sName] === "function") {
             try { oAPP.events[sName](); }
@@ -244,6 +246,12 @@
      * 공통 드롭다운/메뉴 (shell.css .u4a-menu)
      ********************************************************************/
     var _openAnchor = null;
+
+    // 서브헤더(트랜잭션 툴바) 오버플로 상태 — 좁아지면 넘치는 버튼을 ⋯ 메뉴로 접는다.
+    var _oSubHeaderEl = null;   // 툴바 컨테이너
+    var _aBarItems = [];        // [{ el, cfg }] (오버플로 ⋯ 버튼 제외)
+    var _oOverflowBtn = null;   // ⋯ 버튼
+    var _oReflowObs = null;     // ResizeObserver
 
     function _closeMenus() {
         var aMenus = document.querySelectorAll(".u4a-menu");
@@ -614,25 +622,113 @@
         var o = document.createElement("div");
         o.className = "u4a-ws10__subheader";
         var bDev = WS_STATE.USERINFO.IS_DEV === "D";
+        _aBarItems = [];
         _getSubHeaderButtons().forEach(function (cfg) {
             if (cfg.devOnly && !bDev) { return; }
+            var el;
             if (cfg.sep) {
-                var s = document.createElement("div");
-                s.className = "u4a-tx-sep";
-                o.appendChild(s);
-                return;
+                el = document.createElement("div");
+                el.className = "u4a-tx-sep";
+            } else if (cfg.split) {
+                el = _renderSplitButton(cfg);
+            } else {
+                el = document.createElement("button");
+                el.className = "u4a-tx-btn" + (cfg.reject ? " u4a-tx-btn--reject" : "");
+                el.type = "button";
+                el.id = cfg.id;
+                el.title = cfg.text + " (" + cfg.sc + ")";
+                el.innerHTML = _fa(cfg.icon) + "<span>" + cfg.text + "</span>";
+                el.addEventListener("click", function () { _invoke(cfg.ev, cfg.text); });
             }
-            if (cfg.split) { o.appendChild(_renderSplitButton(cfg)); return; }
-            var b = document.createElement("button");
-            b.className = "u4a-tx-btn" + (cfg.reject ? " u4a-tx-btn--reject" : "");
-            b.type = "button";
-            b.id = cfg.id;
-            b.title = cfg.text + " (" + cfg.sc + ")";
-            b.innerHTML = _fa(cfg.icon) + "<span>" + cfg.text + "</span>";
-            b.addEventListener("click", function () { _invoke(cfg.ev, cfg.text); });
-            o.appendChild(b);
+            o.appendChild(el);
+            _aBarItems.push({ el: el, cfg: cfg });
         });
+
+        // 오버플로(⋯) 버튼 — 폭이 모자라 넘치는 항목을 드롭다운으로 접는다(구 OverflowToolbar 동작).
+        var ovf = document.createElement("button");
+        ovf.className = "u4a-tx-btn u4a-tx-overflow";
+        ovf.type = "button";
+        ovf.id = "ws10OverflowBtn";
+        ovf.title = "More";
+        ovf.setAttribute("data-menu-anchor", "overflow");
+        ovf.innerHTML = ICON.overflow;
+        ovf.hidden = true;
+        ovf.addEventListener("click", function () { _showOverflowMenu(ovf); });
+        o.appendChild(ovf);
+
+        _oSubHeaderEl = o;
+        _oOverflowBtn = ovf;
+
+        // 폭 변화 감지 → 재배치. (ResizeObserver 는 초기 1회도 호출되어 첫 레이아웃에서 반영)
+        if (window.ResizeObserver) {
+            if (_oReflowObs) { _oReflowObs.disconnect(); }
+            _oReflowObs = new ResizeObserver(function () { _reflowSubHeader(); });
+            _oReflowObs.observe(o);
+        } else {
+            setTimeout(_reflowSubHeader, 0);
+        }
         return o;
+    }
+
+    /********************************************************************
+     * 서브헤더 오버플로 재배치 — 넘치는 항목을 숨기고 ⋯ 버튼/메뉴로 노출.
+     ********************************************************************/
+    function _reflowSubHeader() {
+        var bar = _oSubHeaderEl, ovf = _oOverflowBtn;
+        if (!bar || !ovf || !bar.isConnected) { return; }
+        var aEls = _aBarItems.map(function (bi) { return bi.el; });
+
+        // 1) 전부 펼친 상태로 폭 측정
+        aEls.forEach(function (el) { el.hidden = false; });
+        ovf.hidden = false;
+        var cs = getComputedStyle(bar);
+        var gap = parseFloat(cs.columnGap || cs.gap) || 0;
+        var avail = bar.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+        var ovfW = ovf.offsetWidth;
+        var aW = aEls.map(function (el) { return el.offsetWidth; });
+        var total = aW.reduce(function (a, b) { return a + b; }, 0) + gap * Math.max(0, aEls.length - 1);
+
+        // 2) 다 들어가면 ⋯ 숨기고 종료
+        if (total <= avail) { ovf.hidden = true; return; }
+
+        // 3) 넘침 — ⋯ 버튼 자리를 남기고 왼쪽부터 채운다
+        var used = 0, iCut = aEls.length;
+        for (var i = 0; i < aEls.length; i++) {
+            var w = aW[i] + (i > 0 ? gap : 0);
+            if (used + w + gap + ovfW > avail) { iCut = i; break; }
+            used += w;
+        }
+        for (var j = iCut; j < aEls.length; j++) { aEls[j].hidden = true; }
+
+        // 4) 보이는 영역 끝에 매달린 구분선 제거(조잡함 방지)
+        for (var k = iCut - 1; k >= 0; k--) {
+            if (_aBarItems[k].cfg.sep) { aEls[k].hidden = true; } else { break; }
+        }
+    }
+
+    /********************************************************************
+     * 오버플로(⋯) 메뉴 — 숨겨진 트랜잭션 항목을 드롭다운으로 제공.
+     ********************************************************************/
+    function _showOverflowMenu(oAnchor) {
+        var aItems = _aBarItems
+            .filter(function (bi) { return bi.el.hidden && !bi.cfg.sep; })
+            .map(function (bi) {
+                var cfg = bi.cfg;
+                if (cfg.split) {
+                    // App 실행 분할버튼 → 브라우저 선택 서브메뉴(화살표 메뉴와 동일)
+                    return {
+                        icon: cfg.icon, text: cfg.text,
+                        items: APP_EXEC_BROWSERS.map(function (b) {
+                            return {
+                                icon: b.icon, brand: b.brand, text: b.text,
+                                action: function () { _invoke("ev_AppExec", cfg.text + " → " + b.text); }
+                            };
+                        })
+                    };
+                }
+                return { icon: cfg.icon, text: cfg.text, action: function () { _invoke(cfg.ev, cfg.text); } };
+            });
+        _openMenuAt(oAnchor, aItems, function (it) { if (typeof it.action === "function") { it.action(); } }, "right");
     }
 
     function _renderSplitButton(cfg) {
@@ -737,9 +833,11 @@
         o.appendChild(oLabel);
         o.appendChild(oField);
 
-        // clear(X) 동작 연결 — 비운 뒤 모델(APPID)도 동기화
+        // clear(X) 동작 연결 — 비운 뒤 모델(APPID)도 동기화.
+        //   반환된 _syncClear 는 "프로그램적 value set 후" 노출상태를 재계산하는 함수.
+        var _syncClear = function () {};
         if (window.U4AUI && window.U4AUI.attachClear) {
-            window.U4AUI.attachClear(oInput, oClearBtn, function () { WS_STATE.WS10.APPID = ""; });
+            _syncClear = window.U4AUI.attachClear(oInput, oClearBtn, function () { WS_STATE.WS10.APPID = ""; });
         }
 
         if (window.U4AUI && window.U4AUI.attachSuggest) {
@@ -747,6 +845,9 @@
             window.U4AUI.attachSuggest(oInput, _loadAppSugg, function (v) {
                 oInput.value = (v || "").toUpperCase();
                 WS_STATE.WS10.APPID = oInput.value;
+                // suggestion 선택은 input 이벤트를 발화하지 않으므로(자동완성 재오픈 방지),
+                // clear(X) 노출 상태를 직접 재계산해 준다.
+                _syncClear();
             });
         }
         return o;

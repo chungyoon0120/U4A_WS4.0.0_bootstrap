@@ -172,6 +172,10 @@
         URL: "./js/ws_html5_ws20_prev.js",
         MIMETYPE: "script"
     },
+    {
+        URL: "./js/ws_html5_ws20_edit.js",
+        MIMETYPE: "script"
+    },
     ];
 
     oAPP.loadLibrary = function (scripts, index, fnCallback) {

@@ -273,9 +273,19 @@
             BAR.appendChild(_txBtn(oCfg));
         });
 
+        // 오버플로(⋯) — 폭이 모자라면 넘치는 트랜잭션 버튼을 드롭다운으로 접는다(구 OverflowToolbar).
+        try {
+            if (window.U4AUI && window.U4AUI.attachOverflow) {
+                _ws20TbOvf = window.U4AUI.attachOverflow(BAR);
+            }
+        } catch (e) { console.warn("[HTML5][WS20] toolbar overflow attach 실패:", e && e.message); }
+
         return BAR;
 
     } // end of _buildWs20Toolbar
+
+    // 상단 트랜잭션 툴바 오버플로 컨트롤러 (fnUpdateWs20Toolbar 가 모드 변경 후 reflow 호출)
+    var _ws20TbOvf = null;
 
     /************************************************************************
      * [PUBLIC] 모드별 트랜잭션 버튼 활성/비활성(표시/숨김) 갱신
@@ -357,6 +367,9 @@
         // 버튼 가시성 확정 후 구분선 정리 — 모드별 버튼 숨김으로 생기는
         // 선행/후행/중복(연속) 구분선을 접어 "구분선만 두 개" 같은 잔재를 없앤다.
         _collapseToolbarSeparators();
+
+        // 모드별 버튼 가시성 변경 후 오버플로(⋯) 재계산
+        try { if (_ws20TbOvf) { _ws20TbOvf.reflow(); } } catch (e) { }
 
     }; // end of oAPP.fn.fnUpdateWs20Toolbar
 
@@ -462,14 +475,18 @@
         STAT.className = "u4aWs20AppHdrStat";
         HDR.appendChild(STAT);
 
-        // 스페이서
+        // 아이콘 버튼 2개 (구 ws20_findBtn / ws20_newWinBtn) — 원본처럼 상태 텍스트 "바로 뒤"에 배치.
+        //   · Find UI : 원본 sap-icon://sys-find(쌍안경) → binoculars. 타이틀바 전역검색(magnifying-glass)과
+        //               구분되도록 의미 맞는 아이콘 사용. (A70 "Find UI")
+        //   · New Window : 원본 sap-icon://create + parent.onNewWindow → "새 창으로 열기" 의미의
+        //               up-right-from-square. (구 window-restore = 창 '복원' 컨트롤이라 의미 불일치)
+        HDR.appendChild(_appHdrIconBtn("ws20AppHeaderFindBtn", _fa("binoculars"), "Find UI (Ctrl+F)"));
+        HDR.appendChild(_appHdrIconBtn("ws20AppHeaderExportBtn", _fa("up-right-from-square"), "New Window (Ctrl+N)"));
+
+        // 스페이서 — 아이콘 클러스터 뒤(우측 남는 공간 흡수). 원본은 [상태][Find][New] 가 좌측에 모임.
         var SPC = document.createElement("span");
         SPC.className = "u4aWs20AppHdrSpacer";
         HDR.appendChild(SPC);
-
-        // 우측 아이콘 버튼 2개 (구 ws20_findBtn / ws20_newWinBtn) — 자리만(정적), 클릭 가드
-        HDR.appendChild(_appHdrIconBtn("ws20AppHeaderFindBtn", _fa("magnifying-glass"), "Find (Ctrl+F)"));
-        HDR.appendChild(_appHdrIconBtn("ws20AppHeaderExportBtn", _fa("window-restore"), "New Window (Ctrl+N)"));
 
         return HDR;
 
@@ -510,11 +527,18 @@
         if (elMode) { elMode.textContent = (sIsEdit === "X") ? "Change" : "Display"; }
 
         // 상태 (ACTST: "A" → Active, 그 외 값 → Inactive, 필드 없으면 빈값)
+        //   단, 변경분이 있으면(IS_CHAG === "X") 아직 액티브 전이라 "Inactive" 로 표시
+        //   (원본 UX: 속성 하나라도 바꾸면 inactive → Save/Activate 후 갱신).
         var sActst = (oInfo && oInfo.ACTST != null) ? oInfo.ACTST : lf_model("/WS20/APP/ACTST");
+        var sIsChag = (oInfo && oInfo.IS_CHAG != null) ? oInfo.IS_CHAG : lf_model("/WS20/APP/IS_CHAG");
         if (elStat) {
-            elStat.textContent = (sActst == null || sActst === "")
-                ? ""
-                : (sActst === "A" ? "Active" : "Inactive");
+            if (sIsChag === "X") {
+                elStat.textContent = "Inactive";
+            } else {
+                elStat.textContent = (sActst == null || sActst === "")
+                    ? ""
+                    : (sActst === "A" ? "Active" : "Inactive");
+            }
         }
 
         // 모드별 트랜잭션 버튼 표시/숨김도 함께 갱신 (헤더와 동일 타이밍 = 모든 재진입/모드전환)

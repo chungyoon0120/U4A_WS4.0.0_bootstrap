@@ -332,8 +332,23 @@
             BAR.appendChild(_tbBtn(oCfg));
         });
 
+        // 오버플로(⋯) — 폭이 모자라면 넘치는 트리 버튼을 드롭다운으로 접는다(구 OverflowToolbar).
+        //   트리 툴바는 아이콘 버튼(u4a-btn-icon)이라 ⋯ 도 동일 모양으로, 구분선은 TreeTbSep 으로 판별.
+        try {
+            if (window.U4AUI && window.U4AUI.attachOverflow) {
+                _treeTbOvf = window.U4AUI.attachOverflow(BAR, {
+                    btnClass: "u4a-btn-icon",
+                    btnHtml: '<span class="u4aWs20TreeTbIcon"><i class="fa-solid fa-ellipsis"></i></span>',
+                    isSep: function (el) { return el.classList.contains("u4aWs20TreeTbSep"); }
+                });
+            }
+        } catch (e) { console.warn("[HTML5][WS20][tree] toolbar overflow attach 실패:", e && e.message); }
+
         return BAR;
     }
+
+    // 트리 툴바 오버플로 컨트롤러 (fnRenderDesignTree 가 편집모드 토글 후 reflow 호출)
+    var _treeTbOvf = null;
 
     // undo/redo 원본 진입점 (parent.require(oAPP.oDesign.pathInfo.undoRedo)) [가드]
     function _execHistory(sMode) {
@@ -378,6 +393,16 @@
         if (bHasChild) {
             ROW.setAttribute("aria-expanded", bExpanded ? "true" : "false"); // 셰브론 회전(공통 CSS)
         }
+
+        // 우클릭 컨텍스트 메뉴 (구 callDesignContextMenu) — ws_html5_ws20_edit.js
+        ROW.addEventListener("contextmenu", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            _safeCall("setSelectTreeItem", [sObjid]); // 우클릭 노드 선택(원본 동작)
+            if (oAPP.fn.fnWs20ShowTreeContextMenu) {
+                oAPP.fn.fnWs20ShowTreeContextMenu(oNode, e.clientX, e.clientY);
+            }
+        });
 
         // 선택 하이라이트 — 공통 컴포넌트 규칙(aria-selected). (WS20 highlight 는 hl-* 별도)
         if (_getSelectedObjid() === sObjid) {
@@ -472,10 +497,13 @@
             RIGHT.appendChild(AGGR);
         }
 
-        // 행 액션 (+추가 / 삭제) — hover 시 노출 (visible_add / visible_delete)
+        // 행 액션 (+추가 / 삭제) — 오른쪽 "고정 2슬롯 컬럼".
+        //   슬롯1 = +(add), 슬롯2 = 삭제(delete). 버튼이 없는 노드도 빈 슬롯으로 자리를 유지해
+        //   모든 행에서 + 끼리, 삭제 끼리 세로 정렬되게 한다(원본 sap.ui.table.Column 정렬 효과).
         var ACT = document.createElement("span");
         ACT.className = "u4aWs20TreeActions";
 
+        // 슬롯1: + (add)
         if (oNode.visible_add === true) {
             var ADD = document.createElement("button");
             ADD.type = "button";
@@ -484,12 +512,16 @@
             ADD.innerHTML = '<i class="fa-solid fa-plus"></i>';
             ADD.addEventListener("click", function (e) {
                 e.stopPropagation();
-                // 원본 add Icon press: designUIAdd(노드) [가드]
-                _safeCall("designUIAdd", [oNode]);
+                _safeCall("designUIAdd", [oNode]); // 원본 add Icon press [가드]
             });
             ACT.appendChild(ADD);
+        } else {
+            var ADD0 = document.createElement("span");
+            ADD0.className = "u4aWs20TreeActSlot";
+            ACT.appendChild(ADD0);
         }
 
+        // 슬롯2: 삭제 (delete)
         if (oNode.visible_delete === true) {
             var DEL = document.createElement("button");
             DEL.type = "button";
@@ -498,10 +530,13 @@
             DEL.innerHTML = '<i class="fa-solid fa-trash"></i>';
             DEL.addEventListener("click", function (e) {
                 e.stopPropagation();
-                // 원본 delete Icon press: designUIDelete(노드) [가드]
-                _safeCall("designUIDelete", [oNode]);
+                _safeCall("designUIDelete", [oNode]); // 원본 delete Icon press [가드]
             });
             ACT.appendChild(DEL);
+        } else {
+            var DEL0 = document.createElement("span");
+            DEL0.className = "u4aWs20TreeActSlot";
+            ACT.appendChild(DEL0);
         }
 
         RIGHT.appendChild(ACT);
@@ -585,6 +620,9 @@
         for (var k = 0; k < aEditOnly.length; k++) {
             aEditOnly[k].style.display = bEdit ? "" : "none";
         }
+
+        // 편집 전용 버튼 표시/숨김이 바뀌었으니 툴바 오버플로(⋯) 재계산
+        try { if (_treeTbOvf) { _treeTbOvf.reflow(); } } catch (e) { }
 
         var oScrollArea = oWrap.querySelector(".u4aWs20TreeScroll");
         oScrollArea.innerHTML = "";

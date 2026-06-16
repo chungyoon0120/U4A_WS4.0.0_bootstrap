@@ -108,6 +108,7 @@ var oAPP = (function () {
         eyeSlash: _fa("eye-slash"),
         disconnected: _fa("plug-circle-xmark"),
         question: _fa("circle-question"),
+        checklist: _fa("list-check"),
         noauth: _fa("user-lock"),
         spinner: _fa("spinner"),
         success: _fa("circle-check"),
@@ -168,24 +169,33 @@ var oAPP = (function () {
 
         oDlg = document.createElement("dialog");
         oDlg.id = "u4aWsLoginMsgDlg";
-        oDlg.className = "u4a-msgbox";
+        // 서버리스트/셸 메시지박스와 동일한 .u4a-dialog(헤더 아이콘 + 본문 + 푸터) 디자인으로 통일.
+        oDlg.className = "u4a-dialog";
+        oDlg.style.width = "min(28rem, 92vw)";
 
+        const oTypeIcon = { C: "circle-question", S: "circle-check", E: "circle-xmark", W: "triangle-exclamation", I: "circle-info" };
         const sTitle = opts.title || ({ C: "Confirm", S: "Success", E: "Error", W: "Warning", I: "Information" }[TYPE] || "");
-        if (sTitle) {
-            const oHead = document.createElement("div");
-            oHead.className = "u4a-msgbox__title";
-            oHead.dataset.type = (TYPE === "I" || TYPE === "C") ? "" : TYPE;
-            oHead.textContent = sTitle;
-            oDlg.appendChild(oHead);
-        }
+
+        const oHead = document.createElement("div");
+        oHead.className = "u4a-dialog__header";
+        oHead.dataset.type = TYPE || "I";
+        const oIcon = document.createElement("i");
+        oIcon.className = "fa-solid fa-" + (oTypeIcon[TYPE] || "circle-info");
+        oHead.appendChild(oIcon);
+        const oTitleSpan = document.createElement("span");
+        oTitleSpan.textContent = sTitle;
+        oHead.appendChild(oTitleSpan);
+        oDlg.appendChild(oHead);
 
         const oBody = document.createElement("div");
-        oBody.className = "u4a-msgbox__body";
+        oBody.className = "u4a-dialog__body";
+        oBody.style.whiteSpace = "pre-wrap";
+        oBody.style.lineHeight = "1.45";
         oBody.textContent = sMsg;
         oDlg.appendChild(oBody);
 
         const oFoot = document.createElement("div");
-        oFoot.className = "u4a-msgbox__footer";
+        oFoot.className = "u4a-dialog__footer";
 
         function _close(sAction) {
             oDlg.close();
@@ -1955,12 +1965,15 @@ var oAPP = (function () {
 
         const oFoot = document.createElement("div");
         oFoot.className = "u4a-dialog__footer";
+        // 점검사항(체크리스트) 열기 = 사용자가 취할 주 동작 → 강조(primary). 아이콘도
+        //   물음표(도움말) 대신 체크리스트(list-check)로 의미를 맞춘다.
         const oHelpBtn = document.createElement("button");
-        oHelpBtn.className = "u4a-btn";
-        oHelpBtn.innerHTML = ICON.question + " " + (sMsg01 || "");
+        oHelpBtn.className = "u4a-btn u4a-btn--emphasized";
+        oHelpBtn.innerHTML = ICON.checklist + " " + (sMsg01 || "");
         oHelpBtn.addEventListener("click", () => _showLoginErrorHelpPopup());
+        // Close = 단순 닫기(보조). 제목/아이콘이 이미 오류색이라 버튼까지 빨강이면 과함 → 중립 버튼.
         const oCloseBtn = document.createElement("button");
-        oCloseBtn.className = "u4a-btn u4a-btn--negative";
+        oCloseBtn.className = "u4a-btn";
         oCloseBtn.textContent = "Close";
         oCloseBtn.addEventListener("click", () => oDlg.close());
         oFoot.appendChild(oHelpBtn);

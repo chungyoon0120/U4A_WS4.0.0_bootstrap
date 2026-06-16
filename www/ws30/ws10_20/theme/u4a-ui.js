@@ -327,11 +327,146 @@
        iframe stale 은 호스트의 _kickHostDragRegion 가, 컴포지팅 레이어는 CSS 정적화로
        해결한다. (참고: u4a-ws-40 7e7f98d "창 드래그 근본 해결") */
 
+    /**
+     * 가로 툴바 오버플로(⋯) — 폭이 모자라 넘치는 항목을 드롭다운 메뉴로 접는다.
+     *   (sap.m.OverflowToolbar 대체. WS10 서브헤더와 동일 컨셉을 공통화)
+     *   컨테이너는 flex-row + nowrap + overflow:hidden 이어야 하고, 항목은 flex-shrink:0 권장.
+     *   모드별로 style.display="none" 처리된 항목은 "현재 숨김"으로 간주하여 reflow 대상에서 제외한다.
+     * @param {HTMLElement} oBar  툴바 컨테이너
+     * @param {object} [opt]
+     *    opt.btnClass {string}  ⋯ 버튼 class (기본 "u4a-tx-btn u4a-tx-overflow")
+     *    opt.btnHtml  {string}  ⋯ 버튼 innerHTML (기본 ellipsis 아이콘)
+     *    opt.title    {string}  ⋯ 버튼 title (기본 "More")
+     *    opt.isSep(el){fn}      구분선 판별 (기본 .u4a-tx-sep)
+     *    opt.menuItem(el){fn}   숨겨진 항목 → {iconHtml,text,onClick} (기본: i/span/title 파싱 + el.click())
+     * @returns {{reflow:Function, destroy:Function}}
+     */
+    function attachOverflow(oBar, opt) {
+        opt = opt || {};
+        const fnIsSep = opt.isSep || function (el) { return el.classList.contains("u4a-tx-sep"); };
+
+        // ⋯ 오버플로 버튼 (항상 우측 끝)
+        const oOvf = _el("button", opt.btnClass || "u4a-tx-btn u4a-tx-overflow");
+        oOvf.type = "button";
+        oOvf.title = opt.title || "More";
+        oOvf.innerHTML = opt.btnHtml || _fa("ellipsis");
+        oOvf.style.marginLeft = "auto";
+        oOvf.hidden = true;
+        oBar.appendChild(oOvf);
+
+        let oMenu = null;
+        function _onOut(ev) {
+            if (oMenu && !(ev.target.closest && ev.target.closest(".u4a-menu")) && ev.target !== oOvf && !oOvf.contains(ev.target)) {
+                _closeMenu();
+            }
+        }
+        function _onEsc(ev) { if (ev.key === "Escape") { _closeMenu(); } }
+        function _closeMenu() {
+            if (!oMenu) { return; }
+            oMenu.remove(); oMenu = null;
+            oOvf.setAttribute("aria-expanded", "false");
+            document.removeEventListener("mousedown", _onOut, true);
+            document.removeEventListener("keydown", _onEsc, true);
+        }
+
+        function _items() {
+            return Array.prototype.filter.call(oBar.children, function (el) { return el !== oOvf; });
+        }
+
+        function _defMenuItem(el) {
+            const oI = el.querySelector("i");
+            const oSpan = el.querySelector("span");
+            let sText = (oSpan && oSpan.textContent.trim()) ? oSpan.textContent
+                : (el.title || "").replace(/\s*\([^)]*\)\s*$/, ""); // title 폴백 시 끝의 (단축키) 제거
+            return { iconHtml: oI ? oI.outerHTML : "", text: sText, onClick: function () { el.click(); } };
+        }
+        const fnMenuItem = opt.menuItem || _defMenuItem;
+
+        function _openMenu() {
+            _closeMenu();
+            oMenu = _el("div", "u4a-menu");
+            oMenu.setAttribute("role", "menu");
+            _items().forEach(function (el) {
+                if (!el.hidden || fnIsSep(el)) { return; } // 오버플로로 숨겨진 "버튼"만
+                const mi = fnMenuItem(el);
+                const oItem = _el("div", "u4a-menu__item");
+                oItem.setAttribute("role", "menuitem");
+                oItem.innerHTML = (mi.iconHtml || "<i></i>") + '<span class="u4a-menu__item-text"></span>';
+                oItem.querySelector(".u4a-menu__item-text").textContent = mi.text;
+                oItem.addEventListener("click", function (e) {
+                    e.stopPropagation(); _closeMenu();
+                    if (typeof mi.onClick === "function") { mi.onClick(); }
+                });
+                oMenu.appendChild(oItem);
+            });
+            (oBar.closest("dialog") || document.body).appendChild(oMenu);
+            const r = oOvf.getBoundingClientRect();
+            let left = r.right - oMenu.offsetWidth; // 우측 정렬
+            if (left + oMenu.offsetWidth > window.innerWidth - 4) { left = window.innerWidth - oMenu.offsetWidth - 4; }
+            if (left < 4) { left = 4; }
+            let top = r.bottom + 2;
+            if (top + oMenu.offsetHeight > window.innerHeight - 4) { top = Math.max(4, r.top - oMenu.offsetHeight - 2); }
+            oMenu.style.left = left + "px";
+            oMenu.style.top = top + "px";
+            oOvf.setAttribute("aria-expanded", "true");
+            setTimeout(function () {
+                document.addEventListener("mousedown", _onOut, true);
+                document.addEventListener("keydown", _onEsc, true);
+            }, 0);
+        }
+        oOvf.addEventListener("click", function () { if (oMenu) { _closeMenu(); } else { _openMenu(); } });
+
+        function reflow() {
+            if (!oBar.isConnected) { return; }
+            _closeMenu();
+            const aAll = _items();
+            aAll.forEach(function (el) { el.hidden = false; }); // 측정 위해 오버플로 숨김 해제
+            oOvf.hidden = false;
+            // 모드 가시(style.display!=="none") 항목만 대상
+            const aVis = aAll.filter(function (el) { return el.style.display !== "none"; });
+            const cs = getComputedStyle(oBar);
+            const gap = parseFloat(cs.columnGap || cs.gap) || 0;
+            const avail = oBar.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+            const ovfW = oOvf.offsetWidth;
+            const aW = aVis.map(function (el) { return el.offsetWidth; });
+            const total = aW.reduce(function (a, b) { return a + b; }, 0) + gap * Math.max(0, aVis.length - 1);
+            if (total <= avail) { oOvf.hidden = true; return; }
+            let used = 0, iCut = aVis.length;
+            for (let i = 0; i < aVis.length; i++) {
+                const w = aW[i] + (i > 0 ? gap : 0);
+                if (used + w + gap + ovfW > avail) { iCut = i; break; }
+                used += w;
+            }
+            for (let j = iCut; j < aVis.length; j++) { aVis[j].hidden = true; }
+            // 보이는 영역 끝에 매달린 구분선 정리
+            for (let k = iCut - 1; k >= 0; k--) {
+                if (fnIsSep(aVis[k])) { aVis[k].hidden = true; } else { break; }
+            }
+            // 숨겨진 "버튼"(비구분선)이 없으면 ⋯ 불필요
+            const bAny = aVis.some(function (el) { return el.hidden && !fnIsSep(el); });
+            if (!bAny) { oOvf.hidden = true; }
+        }
+
+        let oRO = null;
+        if (window.ResizeObserver) { oRO = new ResizeObserver(function () { reflow(); }); oRO.observe(oBar); }
+        else { setTimeout(reflow, 0); }
+
+        return {
+            reflow: reflow,
+            destroy: function () {
+                _closeMenu();
+                if (oRO) { oRO.disconnect(); oRO = null; }
+                if (oOvf.parentNode) { oOvf.parentNode.removeChild(oOvf); }
+            }
+        };
+    }
+
     const U4AUI = {
         el: _el,
         createSelect: createSelect,
         attachSuggest: attachSuggest,
-        attachClear: attachClear
+        attachClear: attachClear,
+        attachOverflow: attachOverflow
     };
 
     global.U4AUI = U4AUI;

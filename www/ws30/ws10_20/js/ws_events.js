@@ -1062,14 +1062,21 @@
         sMsg = APPCOMMON.fnGetMsgClsText("/U4A/MSG_WS", "118"); // Application has been changed
         sMsg += " \n " + APPCOMMON.fnGetMsgClsText("/U4A/MSG_WS", "119"); // Save before leaving editor?
 
-        // 메시지 질문 팝업을 띄운다.
-        parent.showMessage(sap, 40, 'W', sMsg, oAPP.events.ev_pageBack_MsgCallBack);
-
-        // 현재 떠있는 팝업 창들을 잠시 숨긴다.
-        oAPP.fn.fnChildWindowShow(false);
-
-        // busy 끄고 Lock 풀기
+        // 사용자 응답을 대기하므로 busy 해제 + 떠있는 팝업 잠시 숨김
         oAPP.common.fnSetBusyLock("");
+        try { if (oAPP.fn.fnChildWindowShow) { oAPP.fn.fnChildWindowShow(false); } } catch (e) { }
+
+        // 저장 여부 질문 (구: parent.showMessage(sap, 40, 'W', ...) — sap 의존 →
+        //   HTML5 확인창. YES=저장 후 이동 / NO=저장 안 하고 이동 / CANCEL=머무름.)
+        if (oAPP.common && typeof oAPP.common.fnConfirmBox === "function") {
+            oAPP.common.fnConfirmBox('W', sMsg, oAPP.events.ev_pageBack_MsgCallBack, [
+                { act: "YES", label: "Yes", emphasized: true },
+                { act: "NO", label: "No" },
+                { act: "CANCEL", label: "Cancel" }
+            ]);
+        } else {
+            oAPP.events.ev_pageBack_MsgCallBack(window.confirm(sMsg) ? "YES" : "CANCEL");
+        }
 
     }; // end of oAPP.events.ev_pageBack
 
@@ -1093,18 +1100,20 @@
             // busy 키고 Lock 걸기
             oAPP.common.fnSetBusyLock("X");
 
-            var oSaveBtn = sap.ui.getCore().byId("saveBtn");
-            if (!oSaveBtn) {
-
-                // busy 끄고 Lock 풀기
+            // [HTML5] 구: sap.ui.getCore().byId("saveBtn").firePress({ISBACK:"X"})
+            //   → 저장 핸들러 직접 호출(ISBACK="X" → 저장 성공 후 WS10 으로 이동).
+            if (typeof oAPP.events.ev_pressSaveBtn !== "function") {
                 oAPP.common.fnSetBusyLock("");
+                try { parent.showMessage(null, 20, "E", "[Save] ev_pressSaveBtn 미정의"); } catch (e) { }
                 return;
             }
-
-            // 저장 로직 수행 한다.
-            oSaveBtn.firePress({
-                ISBACK: "X"
-            });
+            try {
+                oAPP.events.ev_pressSaveBtn({ ISBACK: "X" });
+            } catch (e) {
+                oAPP.common.fnSetBusyLock("");
+                try { parent.showMessage(null, 20, "E", "[Save] " + (e && e.message ? e.message : String(e))); } catch (e2) { }
+                console.error("[HTML5][WS20] save(ISBACK) error:", e);
+            }
 
             return;
 
@@ -1307,6 +1316,17 @@
     }
 
     /************************************************************************
+     * [HTML5] 작업표시줄 깜빡임 안전 호출 — CURRWIN/REMOTE 미정의 렌더러 대비.
+     ************************************************************************/
+    function _ws20FlashFrame() {
+        try {
+            var w = (typeof CURRWIN !== "undefined" && CURRWIN) ? CURRWIN
+                  : (parent.REMOTE ? parent.REMOTE.getCurrentWindow() : (parent.CURRWIN || null));
+            if (w && w.flashFrame) { w.flashFrame(true); }
+        } catch (e) { }
+    }
+
+    /************************************************************************
      * Activate Button Event
      ************************************************************************/
     oAPP.events.ev_pressActivateBtn = async function (oEvent) {
@@ -1320,38 +1340,40 @@
         // 멀티 푸터 메시지가 있을 경우 닫기
         APPCOMMON.fnMultiFooterMsgClose();
 
-        let T_excep = oAPP.fn.chkExcepionAttr(),
-            iexceplength = T_excep.length;
+        // [HTML5] 예외검증은 design 모듈(chkExcepionAttr)에 의존 — 미로드/오류 시 검증 skip.
+        let T_excep = [];
+        try {
+            if (typeof oAPP.fn.chkExcepionAttr === "function") { T_excep = oAPP.fn.chkExcepionAttr() || []; }
+        } catch (e) { console.warn("[HTML5][WS20] chkExcepionAttr skip:", e && e.message); }
+        let iexceplength = T_excep.length;
 
         if (iexceplength !== 0) {
 
             // // 자식 윈도우 활성화
             // oAPP.fn.fnChildWindowShow(true);
             
-            // 멀티푸터 메시지 실행 
+            // 멀티푸터 메시지 실행
             // 이 안에서 화면이 로드가 완료되면
             // IPC로 비지 끄는 로직 있음
-            oAPP.fn.fnMultiFooterMsg(T_excep);
+            try { if (oAPP.fn.fnMultiFooterMsg) { oAPP.fn.fnMultiFooterMsg(T_excep); } } catch (e) { }
 
             // 작업표시줄 깜빡임
-            CURRWIN.flashFrame(true);
+            _ws20FlashFrame();
 
             // // busy 끄고 Lock 풀기
-            // oAPP.common.fnSetBusyLock("");            
+            // oAPP.common.fnSetBusyLock("");
 
             return;
 
         }
 
         // 자식 윈도우 숨기기
-        oAPP.fn.fnChildWindowShow(false);
+        try { if (oAPP.fn.fnChildWindowShow) { oAPP.fn.fnChildWindowShow(false); } } catch (e) { }
 
-        oEvent.mParameters.IS_ACT = "X";
-
-        var oLocalEvent = new sap.ui.base.Event(),
-            oNewEvent = jQuery.extend(true, oLocalEvent, oEvent);
-
-        var TRKORR = oEvent.getParameter("TRKORR");
+        // [HTML5] oEvent 는 HTML5 버튼/단축키에서 미전달될 수 있음(옵셔널).
+        //   구 sap.ui.base.Event 기반 oNewEvent 는 이후 미사용(사장 코드)이라 제거.
+        oEvent = oEvent || {};
+        var TRKORR = (typeof oEvent.getParameter === "function") ? oEvent.getParameter("TRKORR") : oEvent.TRKORR;
 
         var sPath = parent.getServerPath() + '/save_active_appdata#active',
             oFormData = new FormData();
@@ -1515,13 +1537,16 @@
 
             oAppInfo = jQuery.extend(true, {}, parent.getAppInfo());
 
-            APPCOMMON.fnSetModelProperty("/WS20/APP", oAppInfo);           
+            APPCOMMON.fnSetModelProperty("/WS20/APP", oAppInfo);
 
-            //undo, redo 이력 초기화.
-            parent.require(oAPP.oDesign.pathInfo.undoRedo).clearHistory();
+            // [HTML5] 앱헤더(Active/Inactive)·트랜잭션 버튼 상태 갱신
+            try { if (oAPP.fn.fnUpdateWs20AppHeader) { oAPP.fn.fnUpdateWs20AppHeader(); } } catch (e) { }
 
-            //undo, redo 버튼 활성여부 처리.
-            parent.require(oAPP.oDesign.pathInfo.undoRedo).setUndoRedoButtonEnable();
+            // undo, redo 이력/버튼 초기화 (design 모듈 미로드 시 skip)
+            try {
+                parent.require(oAPP.oDesign.pathInfo.undoRedo).clearHistory();
+                parent.require(oAPP.oDesign.pathInfo.undoRedo).setUndoRedoButtonEnable();
+            } catch (e) { console.warn("[HTML5][WS20] undoRedo skip:", e && e.message); }
 
             oAPP.attr.oModel.refresh();
 
@@ -1663,25 +1688,29 @@
         oAPP.common.fnSetBusyLock("X");
 
         // 자식 윈도우 숨기기
-        oAPP.fn.fnChildWindowShow(false);
+        try { if (oAPP.fn.fnChildWindowShow) { oAPP.fn.fnChildWindowShow(false); } } catch (e) { }
 
         // 푸터 메시지가 있을 경우 닫기
         APPCOMMON.fnHideFloatingFooterMsg();
 
-        var oLocalEvent = new sap.ui.base.Event(),
-            oNewEvent = jQuery.extend(true, oLocalEvent, oEvent);
+        // [HTML5] oEvent 옵셔널(버튼/단축키는 미전달). 구 sap.ui.base.Event 기반
+        //   oNewEvent 는 이후 미사용(사장 코드)이라 제거.
+        oEvent = oEvent || {};
+        function _ev(sKey) { return (typeof oEvent.getParameter === "function") ? oEvent.getParameter(sKey) : oEvent[sKey]; }
 
         var sPath = parent.getServerPath() + '/save_active_appdata#save',
             oFormData = new FormData();
 
-        var ISBACK = oEvent.getParameter("ISBACK"), // 저장후 뒤로 갈 경우 (20 -> 10)
-            ISDISP = oEvent.getParameter("ISDISP"), // 저장후 Display 모드로 전환일 경우            
-            TRKORR = oEvent.getParameter("TRKORR");
+        var ISBACK = _ev("ISBACK"), // 저장후 뒤로 갈 경우 (20 -> 10)
+            ISDISP = _ev("ISDISP"), // 저장후 Display 모드로 전환일 경우
+            TRKORR = _ev("TRKORR");
+
+        try {
 
         var sReqNo = "";
 
         // 기존에 CTS 번호가 있을 경우
-        if (oAPP.attr.appInfo.REQNO != "") {
+        if (oAPP.attr.appInfo && oAPP.attr.appInfo.REQNO != "") {
             sReqNo = oAPP.attr.appInfo.REQNO;
         }
 
@@ -1725,6 +1754,14 @@
 
         // Ajax 서버 호출
         sendAjax(sPath, oFormData, lf_getAppInfo);
+
+        } catch (oSaveErr) {
+            // [HTML5] 저장 데이터 구성/전송 중 동기 오류 → 조용한 실패 대신 사용자에게 표시.
+            oAPP.common.fnSetBusyLock("");
+            try { if (oAPP.fn.fnChildWindowShow) { oAPP.fn.fnChildWindowShow(true); } } catch (e) { }
+            try { parent.showMessage(null, 20, "E", "[Save] " + (oSaveErr && oSaveErr.message ? oSaveErr.message : String(oSaveErr))); } catch (e) { }
+            console.error("[HTML5][WS20] ev_pressSaveBtn error:", oSaveErr);
+        }
 
         // 서버 호출 callback
         function lf_getAppInfo(oResult) {
@@ -1783,10 +1820,13 @@
             // 저장후 10번 페이지로 이동이면..
             if (ISBACK == 'X') {
 
-                oAPP.fn.fnMoveToWs10();
-
-                // // busy 끄고 Lock 풀기
-                // oAPP.common.fnSetBusyLock("");
+                try {
+                    oAPP.fn.fnMoveToWs10();
+                } catch (eMove) {
+                    oAPP.common.fnSetBusyLock("");
+                    try { parent.showMessage(null, 20, "E", "[Back] " + (eMove && eMove.message ? eMove.message : String(eMove))); } catch (e) { }
+                    console.error("[HTML5][WS20] fnMoveToWs10 error:", eMove);
+                }
 
                 return;
             }
@@ -1819,12 +1859,15 @@
             oAppInfo = jQuery.extend(true, {}, parent.getAppInfo());
 
             APPCOMMON.fnSetModelProperty("/WS20/APP", oAppInfo);
-            
-            //undo, redo 이력 초기화.
-            parent.require(oAPP.oDesign.pathInfo.undoRedo).clearHistory();
 
-            //undo, redo 버튼 활성여부 처리.
-            parent.require(oAPP.oDesign.pathInfo.undoRedo).setUndoRedoButtonEnable();
+            // [HTML5] 앱헤더(Active/Inactive)·트랜잭션 버튼 상태 갱신 (IS_CHAG="" → 저장 반영)
+            try { if (oAPP.fn.fnUpdateWs20AppHeader) { oAPP.fn.fnUpdateWs20AppHeader(); } } catch (e) { }
+
+            // undo, redo 이력/버튼 초기화 (design 모듈 미로드 시 skip)
+            try {
+                parent.require(oAPP.oDesign.pathInfo.undoRedo).clearHistory();
+                parent.require(oAPP.oDesign.pathInfo.undoRedo).setUndoRedoButtonEnable();
+            } catch (e) { console.warn("[HTML5][WS20] undoRedo skip:", e && e.message); }
 
             oAPP.attr.oModel.refresh();
 
