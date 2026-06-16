@@ -29,11 +29,12 @@
         // 개인화 폴더없으면 생성
         oAPP.fn.fnOnP13nFolderCreate();
 
-        // 개인화 기본 브라우저 설정 
+        // 개인화 기본 브라우저 설정
         oAPP.fn.fnOnP13nExeDefaultBrowser();
 
-        let oModel = sap.ui.getCore().getModel();
-        let aDEFBR = oModel.getProperty("/DEFBR");
+        // [HTML5] UI5 제거 환경 — sap.ui.getCore().getModel() 대신 모델 shim(fnGet/SetModelProperty) 사용.
+        //   (ws_html5_shell.js 가 fnGet/SetModelProperty 를 oAPP.attr.oModel shim 으로 override)
+        let aDEFBR = APPCOMMON.fnGetModelProperty("/DEFBR");
 
         // 브라우저 정보가 있을 경우에만 수행
         if (aDEFBR && Array.isArray(aDEFBR) === true && aDEFBR.length !== 0) {
@@ -47,7 +48,7 @@
 
             }
 
-            oModel.setProperty("/DEFBR", aDEFBR);
+            APPCOMMON.fnSetModelProperty("/DEFBR", aDEFBR);
 
         }
 
@@ -975,8 +976,9 @@
      * **********************************************************************/
     oAPP.fn.fnSetAppChangeMode = function () {
 
-        // 화면 Lock 걸기
-        sap.ui.getCore().lock();
+        // 화면 Lock 걸기 — [HTML5] sap.ui.getCore().lock() → busy lock(시각 잠금).
+        //   성공 시 setUIAreaEditable→fnLoadWs20TreeData 가 busy 를 관리/해제.
+        oAPP.common.fnSetBusyLock("X");
 
         var oAppInfo = parent.getAppInfo(),
             sCurrPage = parent.getCurrPage();
@@ -1000,8 +1002,8 @@
                 // // 페이지 푸터 메시지
                 // APPCOMMON.fnShowFloatingFooterMsg("E", sCurrPage, sMsg);
 
-                // 화면 Lock 해제
-                sap.ui.getCore().unlock();
+                // 화면 Lock 해제 — [HTML5] sap.ui.getCore().unlock() → busy 해제
+                oAPP.common.fnSetBusyLock("");
 
                 parent.setBusy('');
 
@@ -1072,11 +1074,11 @@
                 // 작업표시줄 깜빡임
                 CURRWIN.flashFrame(true);
 
-                // 크리티컬 오류 처리
-                parent.showMessage(sap, 20, RETURN.RTCOD, RETURN.RTMSG, fnCriticalError);
+                // 크리티컬 오류 처리 — [HTML5] showMessage 첫 인자(oUI5) 무시. sap → null.
+                parent.showMessage(null, 20, RETURN.RTCOD, RETURN.RTMSG, fnCriticalError);
 
-                // 화면 Lock 해제
-                sap.ui.getCore().unlock();
+                // 화면 Lock 해제 — [HTML5] sap.ui.getCore().unlock() → busy 해제
+                oAPP.common.fnSetBusyLock("");
 
                 parent.setBusy('');
 
@@ -1201,8 +1203,8 @@
      ************************************************************************/
     oAPP.fn.fnCheckAppExists = function (APPID, fnCallback) {
 
-        // 화면 Lock 걸기
-        sap.ui.getCore().lock();
+        // 화면 Lock 걸기 ([HTML5] sap 미정의 — 가드)
+        if (typeof sap !== "undefined" && sap.ui && sap.ui.getCore) { sap.ui.getCore().lock(); }
 
         // Busy를 킨다.
         parent.setBusy("X");
@@ -1406,7 +1408,7 @@
             // [MSG]
             let sErrMsg = "개발 브라우저용 브라우저를 찾을 수 없습니다.";
 
-            parent.showMessage(sap, 20, 'E', sErrMsg);
+            parent.showMessage(null, 20, 'E', sErrMsg);   // [HTML5] sap → null
 
             // busy 끄고 Lock 풀기
             oAPP.common.fnSetBusyLock("");
@@ -1451,53 +1453,66 @@
         // busy 키고 Lock 걸기
         oAPP.common.fnSetBusyLock("X");
 
-        // 기본 브라우저 설정        
-        oAPP.fn.fnOnInitP13nSettings();
+        // [HTML5] 어떤 분기에서 throw 하더라도 busy 가 영구 잔류하지 않도록 전체 가드.
+        //   (구: fnOnInitP13nSettings 가 /DEFBR 을 적재했으나 HTML5 에선 no-op 스텁이라
+        //    /DEFBR 이 undefined → oDefBrows.find 에서 throw → busy 안 꺼지던 문제 수정.)
+        try {
 
-        var SPAWN = parent.SPAWN,
-            aComm = [];
+            // 기본 브라우저 설정 — /DEFBR 직접 적재(스텁 fnOnInitP13nSettings 대체).
+            try { oAPP.fn.fnOnP13nExeDefaultBrowser(); } catch (e) { }
+            oAPP.fn.fnOnInitP13nSettings();
 
-        var oDefBrows = APPCOMMON.fnGetModelProperty("/DEFBR"),
-            oSelectedBrows = oDefBrows.find(a => a.SELECTED == true);
+            var SPAWN = parent.SPAWN,
+                aComm = [];
 
-        // 브라우저 정보 검증
-        if (!oSelectedBrows || !oSelectedBrows?.INSPATH) {
+            var oDefBrows = APPCOMMON.fnGetModelProperty("/DEFBR");
+            if (!Array.isArray(oDefBrows)) { oDefBrows = []; }   // 미적재(undefined) 방어
+            var oSelectedBrows = oDefBrows.find(a => a.SELECTED == true);
 
-            // 설치된 브라우저 정보를 찾을 수 없습니다.
-            let sMsg = APPCOMMON.fnGetMsgClsText("/U4A/MSG_WS", "333");
+            // 브라우저 정보 검증
+            if (!oSelectedBrows || !oSelectedBrows?.INSPATH) {
 
-            parent.showMessage(sap, 20, 'E', sMsg);
+                // 설치된 브라우저 정보를 찾을 수 없습니다.
+                let sMsg = APPCOMMON.fnGetMsgClsText("/U4A/MSG_WS", "333");
+
+                parent.showMessage(null, 20, 'E', sMsg);   // [HTML5] sap → null
+
+                // busy 끄고 Lock 풀기
+                oAPP.common.fnSetBusyLock("");
+
+                return;
+            }
+
+            // 개발 모드일 경우
+            if (oSelectedBrows.NAME === "DEV_BROWSER") {
+
+                let oParams = {
+                    ...oSelectedBrows,
+                    URL: sUrl
+                };
+
+                // 개발 모드 브라우저 실행 (async — 자체적으로 busy 해제)
+                _openDevBrowser(oParams);
+
+                return;
+            }
+
+            // 앱모드 처리
+            if (oSelectedBrows?.APP_MODE === true) {
+                sUrl = `--app=${sUrl}`;
+            }
+
+            aComm.push(sUrl);
+            SPAWN(oSelectedBrows.INSPATH, aComm, { detached: true });
 
             // busy 끄고 Lock 풀기
             oAPP.common.fnSetBusyLock("");
 
-            return;
+        } catch (e) {
+            // 어떤 오류든 busy 잔류 방지(임의 메시지 미생성 — 개발자 콘솔만).
+            console.error("[HTML5][WS20] fnLaunchBrowser:", e && e.message ? e.message : e);
+            oAPP.common.fnSetBusyLock("");
         }
-
-        // 개발 모드일 경우
-        if (oSelectedBrows.NAME === "DEV_BROWSER") {
-
-            let oParams = {
-                ...oSelectedBrows,
-                URL: sUrl
-            };
-
-            // 개발 모드 브라우저 실행
-            _openDevBrowser(oParams);
-
-            return;
-        }
-
-        // 앱모드 처리
-        if (oSelectedBrows?.APP_MODE === true) {
-            sUrl = `--app=${sUrl}`;
-        }
-
-        aComm.push(sUrl);
-        SPAWN(oSelectedBrows.INSPATH, aComm, { detached: true });
-
-        // busy 끄고 Lock 풀기
-        oAPP.common.fnSetBusyLock("");
 
         return;
     };

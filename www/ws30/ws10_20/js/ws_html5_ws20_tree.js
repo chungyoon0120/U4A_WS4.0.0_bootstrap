@@ -69,15 +69,16 @@
     /************************************************************************
      * 메시지 텍스트 안전 조회 (모델 미초기화/미로그인 상황에서도 폴백)
      ************************************************************************/
-    function _msg(sNum, sFallback) {
+    // 언어 = 서버 메시지 클래스 단일 출처(원본 동일). 내부 영문 폴백 보관 금지(2026-06-16 지시).
+    function _msg(sNum) {
         // 메시지 번호 없으면 조회 생략 — fnGetMsgClsText 가 "못 찾음" 으로 "클래스경로|번호"
         //   (예: /U4A/CL_WS_COMMON|) 를 반환해 라벨에 노출되는 버그 방지.
-        if (sNum == null || sNum === "") { return sFallback != null ? sFallback : ""; }
+        if (sNum == null || sNum === "") { return ""; }
         try {
             var s = APPCOMMON.fnGetMsgClsText("/U4A/CL_WS_COMMON", sNum);
-            if (s != null && s !== "") { return s; }
+            if (s != null && s !== "" && s.indexOf("|") === -1) { return s; }
         } catch (e) { }
-        return sFallback;
+        return sNum;
     }
 
     /************************************************************************
@@ -196,8 +197,10 @@
         if (oCfg.reject) { BTN.style.color = "var(--error)"; }
         else if (oCfg.accept) { BTN.style.color = "var(--success)"; }
         BTN.title = oCfg.tooltip || "";
+        if (oCfg.disabled) { BTN.disabled = true; BTN.classList.add("is-disabled"); }
         if (oCfg.icon) { BTN.setAttribute("data-sap-icon", oCfg.icon); }
         if (oCfg.editOnly) { BTN.setAttribute("data-edit-only", "X"); }
+        if (oCfg.uract) { BTN.setAttribute("data-uract", oCfg.uract); } // undo/redo 활성토글 마커
 
         var GLY = document.createElement("span");
         GLY.className = "u4aWs20TreeTbIcon";
@@ -243,12 +246,21 @@
             if ("EN|KO".indexOf(_LANGU) === -1) { _LANGU = "EN"; }
         } catch (e) { _LANGU = "EN"; }
 
-        function _wsMsg(sNr, sFallback) {
+        function _wsMsg(sNr) {
             try {
                 var s = parent.WSUTIL.getWsMsgClsTxt(_LANGU, "ZMSG_WS_COMMON_001", sNr);
-                if (s) { return s; }
+                if (s && s.indexOf("|") === -1) { return s; }
             } catch (e) { }
-            return sFallback;
+            return sNr;
+        }
+
+        // 웹딘→U4A 변환 플러그인(U4A_CVT_WDR) 설치 서버 여부 (원본 uiDesignArea.js 888행).
+        function _hasWdrPlugin() {
+            try {
+                var oUser = parent.getUserInfo && parent.getUserInfo();
+                var aP = oUser && oUser.META && oUser.META.T_PLIST;
+                return !!(aP && typeof aP.find === "function" && aP.find(function (x) { return x === "U4A_CVT_WDR"; }));
+            } catch (e) { return false; }
         }
 
         var aBtns = [
@@ -289,30 +301,47 @@
                 tooltip: _msg("B24", "UI Template Wizard"),
                 press: function () { _safeCall("designCallWizardPopup", []); }
             },
-            // E28 UI Personalization List (원본 callP13nDesignDataPopup) [가드]
+            // E28 UI Personalization List (원본 callP13nDesignDataPopup) — 아이콘 user-settings→FA user-gear [가드]
             {
-                icon: "sap-icon://user-settings", gly: "⧉",
-                tooltip: _msg("E28", "UI Personalization List"),
+                icon: "sap-icon://user-settings", fa: "user-gear",
+                tooltip: _msg("E28"),
                 press: function () { _safeCall("callP13nDesignDataPopup", ["R"]); }
             },
             { sep: true },
             // 247 Undo (원본 undoRedo.executeHistory("UNDO")) [가드]
             {
-                icon: "sap-icon://undo", gly: "↶", editOnly: true,
-                tooltip: _wsMsg("247", "Undo (Ctrl+Z)"),
+                icon: "sap-icon://undo", gly: "↶", editOnly: true, uract: "UNDO",
+                tooltip: _wsMsg("247"),
                 press: function () { _execHistory("UNDO"); }
             },
             // 248 Redo (원본 undoRedo.executeHistory("REDO")) [가드]
             {
-                icon: "sap-icon://redo", gly: "↷", editOnly: true,
-                tooltip: _wsMsg("248", "Redo (Ctrl+Y)"),
+                icon: "sap-icon://redo", gly: "↷", editOnly: true, uract: "REDO",
+                tooltip: _wsMsg("248"),
                 press: function () { _execHistory("REDO"); }
+            },
+            { sep: true },
+            // 469 Web Dynpro Conversion Log (원본 oLTBar1 detail-view 버튼 — 누락분 복원).
+            //   U4A_CVT_WDR(웹딘→U4A 변환) 플러그인 설치 서버에서만 활성. 별도 Electron 팝업.
+            {
+                icon: "sap-icon://detail-view", fa: "rectangle-list",
+                tooltip: _wsMsg("469"),
+                disabled: !_hasWdrPlugin(),
+                press: function () {
+                    try {
+                        var oSet = parent.getSettingsInfo();
+                        var sPath = parent.PATH.join(oSet.path.POPUP_ROOT, "webDynConversionLog", "index.js");
+                        parent.require(sPath)(parent.REMOTE, oAPP);
+                    } catch (e) {
+                        console.error("[HTML5][WS20][tree] Web Dynpro Conversion Log 오픈 실패:", e);
+                    }
+                }
             },
             { sep: true },
             // B39 Help (원본 도움말 팝업) [가드]
             {
                 icon: "sap-icon://question-mark", gly: "?",
-                tooltip: _msg("B39", "Help"),
+                tooltip: _msg("B39"),
                 press: function () {
                     try {
                         if (oAPP.common && oAPP.common.checkWLOList &&
@@ -339,7 +368,21 @@
                 _treeTbOvf = window.U4AUI.attachOverflow(BAR, {
                     btnClass: "u4a-btn-icon",
                     btnHtml: '<span class="u4aWs20TreeTbIcon"><i class="fa-solid fa-ellipsis"></i></span>',
-                    isSep: function (el) { return el.classList.contains("u4aWs20TreeTbSep"); }
+                    isSep: function (el) { return el.classList.contains("u4aWs20TreeTbSep"); },
+                    // ⋯ 메뉴 항목 라벨은 "항상 버튼 title" 에서 가져온다(아이콘 버튼이라 기본 추출이
+                    //   span 텍스트를 먼저 보는데, 트리 버튼 span 은 아이콘만 있어 라벨이 비던 문제 방지).
+                    //   비활성(disabled) 버튼은 메뉴에서도 흐리게 + 클릭 무시.
+                    menuItem: function (el) {
+                        var oI = el.querySelector("i");
+                        var sText = (el.title || "").replace(/\s*\([^)]*\)\s*$/, "");
+                        var bDis = el.disabled === true || el.classList.contains("is-disabled");
+                        return {
+                            iconHtml: oI ? oI.outerHTML : "",
+                            text: sText,
+                            disabled: bDis,
+                            onClick: function () { if (!bDis) { el.click(); } }
+                        };
+                    }
                 });
             }
         } catch (e) { console.warn("[HTML5][WS20][tree] toolbar overflow attach 실패:", e && e.message); }
@@ -350,9 +393,13 @@
     // 트리 툴바 오버플로 컨트롤러 (fnRenderDesignTree 가 편집모드 토글 후 reflow 호출)
     var _treeTbOvf = null;
 
-    // undo/redo 원본 진입점 (parent.require(oAPP.oDesign.pathInfo.undoRedo)) [가드]
+    // undo/redo 진입점 — HTML5 스냅샷 undo/redo(ws_html5_ws20_edit.js) 우선, 없으면 원본 require.
     function _execHistory(sMode) {
         try {
+            if (oAPP.fn && typeof oAPP.fn.fnWs20ExecHistory === "function") {
+                oAPP.fn.fnWs20ExecHistory(sMode);
+                return;
+            }
             var oUndoRedo = parent.require(oAPP.oDesign.pathInfo.undoRedo);
             if (oUndoRedo && typeof oUndoRedo.executeHistory === "function") {
                 oUndoRedo.executeHistory(sMode);
@@ -360,7 +407,7 @@
             }
             console.warn("[HTML5][WS20][tree] undoRedo not available:", sMode);
         } catch (e) {
-            console.warn("[HTML5][WS20][tree] executeHistory error (다음 단계 변환):", sMode, e && e.message);
+            console.warn("[HTML5][WS20][tree] executeHistory error:", sMode, e && e.message);
         }
     }
 
@@ -388,8 +435,13 @@
         var ROW = document.createElement("div");
         ROW.className = "u4a-tree__row u4aWs20TreeRow";
         ROW.setAttribute("data-objid", sObjid);
-        ROW.title = sObjid; // 원본 HBox tooltip="{OBJID}"
-        ROW.style.paddingLeft = (6 + iDepth * 16) + "px";
+        // 툴팁: 행 전체(큰 타겟)에 data-tip. 좁아서 이름이 0폭이라 hover 못해도 행 어디서든 동작.
+        //   data-tip-trunc-sel → 이름(.u4aWs20TreeName)이 "실제로 잘렸을 때만" 표시(짧으면 생략).
+        //   위치는 매니저가 커서 옆에 띄움. (native title 제거 — OS 툴팁/오배치 방지)
+        ROW.setAttribute("data-tip", sObjid);
+        ROW.setAttribute("data-tip-trunc-sel", ".u4aWs20TreeName");
+        // 들여쓰기 = CSS 변수(깊이)로 전달 → padding 은 CSS 에서 계산. 좁은 패널에선 컨테이너 쿼리가 step 을 줄여 이름 공간 확보.
+        ROW.style.setProperty("--ws20-depth", iDepth);
         if (bHasChild) {
             ROW.setAttribute("aria-expanded", bExpanded ? "true" : "false"); // 셰브론 회전(공통 CSS)
         }
@@ -469,7 +521,7 @@
             LEFT.appendChild(IMG);
         }
 
-        // UI 이름 (OBJID)
+        // UI 이름 (OBJID) — 길면 말줄임(…). 툴팁은 행(ROW)의 data-tip 이 담당(이름이 0폭이어도 hover 가능).
         var NAME = document.createElement("span");
         NAME.className = "u4a-tree__label u4aWs20TreeName";
         NAME.textContent = sObjid;
@@ -644,6 +696,9 @@
             _renderNode(aRoot[i], UL, 0);
         }
         oScrollArea.appendChild(UL);
+
+        // undo/redo 버튼 활성상태 동기화 (버튼이 매 렌더 재생성되므로)
+        try { if (oAPP.fn.fnWs20UpdateUndoBtns) { oAPP.fn.fnWs20UpdateUndoBtns(); } } catch (e) { }
 
     }; // end of oAPP.fn.fnRenderDesignTree
 

@@ -48,6 +48,9 @@
 
 #u4aWsTreePane {
     min-width: 7rem;
+    /* 스크롤 컨테이너 배경을 surface 로 고정 — 트리 내용이 길어 스크롤될 때
+       뒤 페이지 배경(라벤더)이 비치지 않도록 한다. */
+    background: var(--surface);
 }
 
 /* 테이블 헤더 툴바 (Edit / Delete) */
@@ -101,23 +104,81 @@
     border-bottom: 0.0625rem solid var(--line);
     color: var(--text-muted);
     white-space: nowrap;
-    cursor: pointer;
+    cursor: default;
     user-select: none;
 }
 
-.u4a-table thead th:hover {
+/* 메뉴(필터/정렬) 가능한 컬럼만 클릭 가능 표시 + hover */
+.u4a-table thead th.u4a-th--menu {
+    cursor: pointer;
+}
+
+.u4a-table thead th.u4a-th--menu:hover {
     background: var(--hover-bg);
     color: var(--text);
 }
 
-/* 정렬 표시 (asc/desc) — Font Awesome caret */
-.u4a-sort-ico {
-    margin-left: 0.3rem;
+/* 헤더 라벨 + 표시자(정렬 caret / 필터 아이콘) 한 줄 배치 */
+.u4a-th__inner {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.u4a-th__inner--center {
+    justify-content: center;
+}
+
+.u4a-th__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 정렬/필터가 걸린 컬럼에만 노출되는 표시자 */
+.u4a-th__ind {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex: 0 0 auto;
     color: var(--accent);
 }
 
-.u4a-sort-ico i {
-    font-size: 0.7rem;
+/* 정렬 화살표(arrow-up/down)와 필터(funnel)를 같은 크기·정렬로 통일 — 한 세트로 보이게 */
+.u4a-th__ind i {
+    font-size: 0.8rem;
+    line-height: 1;
+}
+
+/* ── 컬럼 헤더 메뉴(.u4a-colmenu) ─────────────────────────────────
+   공통 .u4a-menu 위에 필터 input/구분선/활성 정렬 표시만 덧입힌다. */
+.u4a-colmenu {
+    min-width: 13rem;
+}
+
+.u4a-colmenu__filter {
+    padding: 0.25rem;
+}
+
+.u4a-colmenu__filter .u4a-input {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.u4a-colmenu__sep {
+    height: 0.0625rem;
+    margin: 0.25rem 0;
+    background: var(--line);
+}
+
+/* 현재 적용 중인 정렬 방향 강조 */
+.u4a-colmenu .u4a-menu__item[data-active="true"] {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.u4a-colmenu .u4a-menu__item[data-active="true"] i {
+    color: var(--accent);
 }
 
 .u4a-table tbody td {

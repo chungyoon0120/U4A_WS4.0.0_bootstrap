@@ -411,7 +411,10 @@
         //     return;
         // }
 
-        var oAppNmInput = sap.ui.getCore().byId("AppNmInput");
+        // [HTML5] AppNmInput 은 WS10 의 HTML5 <input> — byId 대신 DOM 헬퍼, getValue()→.value 호환.
+        var oAppNmInput = (typeof oAPP.fn.fnGetWs10AppInputDom === "function")
+            ? oAPP.fn.fnGetWs10AppInputDom()
+            : ((typeof sap !== "undefined" && sap.ui) ? sap.ui.getCore().byId("AppNmInput") : null);
         if (!oAppNmInput) {
 
             // busy 키고 Lock 걸기
@@ -420,7 +423,7 @@
             return;
         }
 
-        var sValue = oAppNmInput.getValue(),
+        var sValue = (typeof oAppNmInput.getValue === "function" ? oAppNmInput.getValue() : (oAppNmInput.value || "")),
             sCurrPage = parent.getCurrPage();
 
         let oUserInfo = parent.process.USERINFO;
@@ -474,8 +477,11 @@
         }
 
         // application 존재 여부 체크
-        var oAppNmInput = sap.ui.getCore().byId("AppNmInput"),
-            sAppID = oAppNmInput.getValue();
+        // [HTML5] AppNmInput DOM 값 재조회(byId/getValue 미사용)
+        var oAppNmInput2 = (typeof oAPP.fn.fnGetWs10AppInputDom === "function")
+            ? oAPP.fn.fnGetWs10AppInputDom()
+            : ((typeof sap !== "undefined" && sap.ui) ? sap.ui.getCore().byId("AppNmInput") : null),
+            sAppID = !oAppNmInput2 ? "" : (typeof oAppNmInput2.getValue === "function" ? oAppNmInput2.getValue() : (oAppNmInput2.value || ""));
 
         // APP 존재 유무 확인
         oAPP.fn.fnCheckAppExists(sAppID, lf_result);
@@ -545,7 +551,10 @@
         //     return;
         // }
 
-        var oAppNmInput = sap.ui.getCore().byId("AppNmInput");
+        // [HTML5] AppNmInput 은 WS10 의 HTML5 <input> — byId 대신 DOM 헬퍼, getValue()→.value 호환.
+        var oAppNmInput = (typeof oAPP.fn.fnGetWs10AppInputDom === "function")
+            ? oAPP.fn.fnGetWs10AppInputDom()
+            : ((typeof sap !== "undefined" && sap.ui) ? sap.ui.getCore().byId("AppNmInput") : null);
         if (!oAppNmInput) {
 
             // busy 키고 Lock 걸기
@@ -554,7 +563,7 @@
             return;
         }
 
-        var sValue = oAppNmInput.getValue(),
+        var sValue = (typeof oAppNmInput.getValue === "function" ? oAppNmInput.getValue() : (oAppNmInput.value || "")),
             sCurrPage = parent.getCurrPage();
 
         let oUserInfo = parent.process.USERINFO;
@@ -608,8 +617,11 @@
         }
 
 
-        var oAppNmInput = sap.ui.getCore().byId("AppNmInput"),
-            sAppID = oAppNmInput.getValue();
+        // [HTML5] AppNmInput DOM 값 재조회(byId/getValue 미사용)
+        var oAppNmInput2 = (typeof oAPP.fn.fnGetWs10AppInputDom === "function")
+            ? oAPP.fn.fnGetWs10AppInputDom()
+            : ((typeof sap !== "undefined" && sap.ui) ? sap.ui.getCore().byId("AppNmInput") : null),
+            sAppID = !oAppNmInput2 ? "" : (typeof oAppNmInput2.getValue === "function" ? oAppNmInput2.getValue() : (oAppNmInput2.value || ""));
 
         // APP 존재 유무 확인
         oAPP.fn.fnCheckAppExists(sAppID, lf_result);
@@ -666,8 +678,8 @@
                 // 페이지 푸터 메시지
                 APPCOMMON.fnShowFloatingFooterMsg("W", sCurrPage, sMsg);
 
-                // 화면 Lock 해제
-                sap.ui.getCore().unlock();
+                // 화면 Lock 해제 ([HTML5] sap 미정의 — 가드)
+                if (typeof sap !== "undefined" && sap.ui && sap.ui.getCore) { sap.ui.getCore().unlock(); }
 
                 // Busy를 끈다.
                 parent.setBusy("");
@@ -741,7 +753,10 @@
         //     return;
         // }
 
-        var oAppNmInput = sap.ui.getCore().byId("AppNmInput");
+        // [HTML5] AppNmInput 은 WS10 의 HTML5 <input> — byId 대신 DOM 헬퍼, getValue()→.value 호환.
+        var oAppNmInput = (typeof oAPP.fn.fnGetWs10AppInputDom === "function")
+            ? oAPP.fn.fnGetWs10AppInputDom()
+            : ((typeof sap !== "undefined" && sap.ui) ? sap.ui.getCore().byId("AppNmInput") : null);
         if (!oAppNmInput) {
 
             // busy 키고 Lock 걸기
@@ -750,7 +765,7 @@
             return;
         }
 
-        var sValue = oAppNmInput.getValue(),
+        var sValue = (typeof oAppNmInput.getValue === "function" ? oAppNmInput.getValue() : (oAppNmInput.value || "")),
             sCurrPage = parent.getCurrPage();
 
         let oUserInfo = parent.process.USERINFO;
@@ -804,8 +819,11 @@
         }
         
 
-        var oAppNmInput = sap.ui.getCore().byId("AppNmInput"),
-            sAppID = oAppNmInput.getValue();
+        // [HTML5] AppNmInput DOM 값 재조회(byId/getValue 미사용)
+        var oAppNmInput2 = (typeof oAPP.fn.fnGetWs10AppInputDom === "function")
+            ? oAPP.fn.fnGetWs10AppInputDom()
+            : ((typeof sap !== "undefined" && sap.ui) ? sap.ui.getCore().byId("AppNmInput") : null),
+            sAppID = !oAppNmInput2 ? "" : (typeof oAppNmInput2.getValue === "function" ? oAppNmInput2.getValue() : (oAppNmInput2.value || ""));
 
         // APP 존재 유무 확인
         oAPP.fn.fnCheckAppExists(sAppID, lf_result);
@@ -1238,7 +1256,8 @@
                 // busy 끄고 Lock 풀기
                 oAPP.common.fnSetBusyLock("");
 
-                parent.showMessage(sap, 40, 'W', sMsg, lf_MsgCallback);
+                // [HTML5] showMessage 는 UI5 제거 후에도 첫 인자(oUI5) 무시(서명 유지). sap → null.
+                parent.showMessage(null, 40, 'W', sMsg, lf_MsgCallback);
                 return;
             }
 
@@ -1275,11 +1294,9 @@
             // 저장 후 Display 모드로 이동한다.
             if (ACTCD === "YES") {
 
-                // 저장 로직 수행
-                var oSaveBtn = sap.ui.getCore().byId("saveBtn");
-                oSaveBtn.firePress({
-                    ISDISP: 'X'
-                });
+                // [HTML5] 구: sap.ui.getCore().byId("saveBtn").firePress({ISDISP:"X"})
+                //   → 저장 핸들러 직접 호출(ISDISP="X" → 저장 성공 후 Display 모드 전환).
+                oAPP.events.ev_pressSaveBtn({ ISDISP: 'X' });
 
                 return;
 
@@ -1950,6 +1967,91 @@
         oAPP.fn.fnOnExecApp(oAppInfo.APPID);
 
     }; // end of oAPP.events.ev_pressAppExecBtn
+
+    /************************************************************************
+     * Application Execution - 특정 브라우저로 실행
+     * ----------------------------------------------------------------------
+     * Split 버튼(Application Executor)의 드롭다운 메뉴 항목에서 호출.
+     * 원본: ws_fn_01.js WS20 oAppExecMenuBtn > MENU1 > MENUITEM1.press 로직 이식.
+     * @param {string} sBrowserName "CHROME" | "MSEDGE" | "DEV_BROWSER"
+     ************************************************************************/
+    oAPP.events.ev_pressAppExecBtnByBrowser = async function (sBrowserName) {
+
+        // busy 키고 Lock 걸기
+        oAPP.common.fnSetBusyLock("X");
+
+        var oAppInfo = parent.getAppInfo(),
+            sCurrPage = parent.getCurrPage(),
+            sACTST = oAppInfo.ACTST;
+
+        // Inactivate 상태일 경우 실행하지 않는다
+        if (sACTST === 'I') {
+
+            let sMsg = APPCOMMON.fnGetMsgClsText("/U4A/MSG_WS", "031"); // Only in activity state !!!
+
+            // 페이지 푸터 메시지
+            APPCOMMON.fnShowFloatingFooterMsg("W", sCurrPage, sMsg);
+
+            // busy 끄고 Lock 풀기
+            oAPP.common.fnSetBusyLock("");
+
+            return;
+        }
+
+        // 선택한 브라우저 정보 조회 (/DEFBR 모델)
+        var aDefBrows = APPCOMMON.fnGetModelProperty("/DEFBR") || [],
+            oBrows = aDefBrows.find(function (o) { return o.NAME === sBrowserName; });
+
+        if (!oBrows) {
+
+            // busy 끄고 Lock 풀기
+            oAPP.common.fnSetBusyLock("");
+
+            return;
+        }
+
+        // 어플리케이션 실행 URL 구하기
+        let sURL = oAPP.fn.fnGetAppUrl();
+
+        let oOptions = {
+            BROWSER_TYPE: oBrows.NAME,
+            INSPATH: oBrows.INSPATH,
+            APP_MODE: false,
+            URL: sURL
+        };
+
+        let oResult = await oAPP.fn.fnOpenAppInBrowser(oOptions);
+        if (oResult.RETCD === "E") {
+
+            switch (oResult.STCOD) {
+                case "E999":    // 필수 파라미터 오류!! 이건 로직이 샌것임!!
+
+                    break;
+
+                case "E001":
+
+                    // 설치된 브라우저 정보를 찾을 수 없습니다.
+                    let sMsg = APPCOMMON.fnGetMsgClsText("/U4A/MSG_WS", "333");
+
+                    // 페이지 푸터 메시지
+                    APPCOMMON.fnShowFloatingFooterMsg("W", sCurrPage, sMsg);
+
+                    break;
+
+                default:
+                    break;
+            }
+
+            // busy 끄고 Lock 해제
+            oAPP.common.fnSetBusyLock("");
+
+            return;
+        }
+
+        // busy 끄고 Lock 해제
+        oAPP.common.fnSetBusyLock("");
+
+    }; // end of oAPP.events.ev_pressAppExecBtnByBrowser
 
     /************************************************************************
      * Multi Preview Button Event

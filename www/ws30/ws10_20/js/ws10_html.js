@@ -68,22 +68,42 @@
     oAPP.ws10html.state = WS_STATE;
 
     /********************************************************************
-     * 메시지 (1단계: 영문 사전 — doc 03 원본 라벨. 2단계에서 fnGetMsgClsText 로 교체)
+     * 라벨 메시지 — 언어는 "서버 메시지 클래스 단일 출처"에서만 가져온다.
+     *   (★ 사용자 지시 2026-06-16: 언어작업을 내부 영문 사전으로 따로 관리 금지.
+     *    원본과 동일하게 메시지 시스템만 사용 → 영문 하드코딩 사전 제거)
+     *   · _txt(코드): A0x/B3x/C42 등 → /U4A/CL_WS_COMMON, M### → ZMSG_WS_COMMON_001 "번호".
+     *   · _wsTxt(번호): ZMSG_WS_COMMON_001 직접 조회(예: Screen Recording=808).
+     *   미조회 시 코드 자체를 반환(영문 번역을 내부 보관하지 않음 — 정상 로그인 흐름에선 항상 조회됨).
      ********************************************************************/
-    var MSG = {
-        Extras: "Extras", Utilities: "Utilities", System: "System", Help: "Help", Test: "Test",
-        B40: "App. Package Change", B41: "App. Import/Export", B42: "App. Importing",
-        B43: "App. Exporting", B45: "Shortcut Manager", B46: "U4A Shortcut Create", B48: "About U4A WS IDE",
-        B49: "Select Browser Type", REC: "Screen Recording", M059: "Source Pattern",
-        M068: "Icon Viewer", M047: "Icon List", M067: "Image Icons",
-        A09: "New Window", B51: "Close Window", B52: "Options", B53: "Logoff",
-        B55: "Administrator", M252: "DevTool", B54: "Release Note", B70: "Error Log", C42: "Server Information",
-        B44: "U4A Help Document", M253: "Keyboard Shortcut List",
-        A01: "Create", A02: "Change", A03: "Delete", A04: "Copy", A05: "Display",
-        A06: "Application Execution", A07: "Example Open", A08: "App Multi Preview", A33: "Application name",
-        M432: "AI Disconnected", M431: "AI Connected"
-    };
-    function _txt(k, f) { return MSG[k] || f || k; }
+    function _txt(k) {
+        // M### 키는 /U4A/CL_WS_COMMON 코드가 아니라 ZMSG_WS_COMMON_001 메시지 "번호"다
+        //   (원본 ws_main.js: oAPP.msg.M068 = getWsMsgClsTxt(.., "ZMSG_WS_COMMON_001", "068")).
+        //   예: M059=Source Pattern/M068=Icon Viewer/M047=Icon List/M067=Image Icons.
+        if (/^M\d{3}$/.test(k)) {
+            return _wsTxt(k.slice(1)) || k;
+        }
+
+        // 그 외 코드형 키(A0x/B3x/C42…) → /U4A/CL_WS_COMMON (= getUserInfo().LANGU = Workspace 언어)
+        try {
+            var oC = window.oAPP && window.oAPP.common;
+            if (oC && oC.fnGetMsgClsText) {
+                var s = oC.fnGetMsgClsText("/U4A/CL_WS_COMMON", k);
+                if (s && s.indexOf("|") === -1) { return s; }
+            }
+        } catch (e) { }
+        return k;
+    }
+
+    // ZMSG_WS_COMMON_001 메시지(Workspace 언어) — /U4A/CL_WS_COMMON 에 없는 항목용(예: Screen Recording=808).
+    //   미조회 시 "" 반환(영문 폴백 보관 안 함). 호출부가 코드/빈값 처리.
+    function _wsTxt(nr) {
+        try {
+            var lg = (parent.getUserInfo && parent.getUserInfo().LANGU) || "";
+            var s = parent.WSUTIL.getWsMsgClsTxt(lg, "ZMSG_WS_COMMON_001", nr);
+            if (s && s.indexOf("|") === -1) { return s; }
+        } catch (e) { }
+        return "";
+    }
 
     /********************************************************************
      * 아이콘 (Font Awesome 7.2.0 solid)
@@ -103,7 +123,7 @@
     function _getWindowMenu() {
         return [
             {
-                key: "WMENU10", text: _txt("Extras"), items: [
+                key: "WMENU10", text: _txt("B34"), items: [
                     { key: "WMENU10_01", icon: "arrows-rotate", text: _txt("B40") },
                     {
                         key: "WMENU10_02", icon: "right-left", text: _txt("B41"), items: [
@@ -120,9 +140,9 @@
                 ]
             },
             {
-                key: "WMENU20", text: _txt("Utilities"), items: [
+                key: "WMENU20", text: _txt("B35"), items: [
                     { key: "WMENU20_01", icon: "globe", text: _txt("B49") },
-                    { key: "WMENU20_03", icon: "video", text: _txt("REC") },
+                    { key: "WMENU20_03", icon: "video", text: _wsTxt("808") },
                     { key: "WMENU20_05", icon: "code", text: _txt("M059") },
                     {
                         key: "WMENU20_04", icon: "icons", text: _txt("M068"), items: [
@@ -133,7 +153,7 @@
                 ]
             },
             {
-                key: "WMENU30", text: _txt("System"), items: [
+                key: "WMENU30", text: _txt("B36"), items: [
                     { key: "WMENU30_01", icon: "plus", text: _txt("A09") },
                     { key: "WMENU30_02", icon: "xmark", text: _txt("B51") },
                     { key: "WMENU30_03", icon: "gear", text: _txt("B52") },
@@ -149,13 +169,13 @@
                 ]
             },
             {
-                key: "WMENU50", text: _txt("Help"), items: [
+                key: "WMENU50", text: _txt("B39"), items: [
                     { key: "WMENU50_01", icon: "book-open-reader", text: _txt("B44") },
                     { key: "WMENU50_04", icon: "keyboard", text: _txt("M253") }
                 ]
             },
             {
-                key: "Test10", text: _txt("Test"), staffOnly: true, items: [
+                key: "Test10", text: _txt("B69"), staffOnly: true, items: [
                     { key: "Test96", text: "USP 페이지 생성" },
                     { key: "Test90", text: "Busy 강제실행" },
                     { key: "Test99", text: "Busy 강제종료" },
@@ -191,6 +211,34 @@
         { key: "MSEDGE", text: "Edge", icon: "edge", brand: true }
     ];
 
+    // [WS20 와 동작 통일] App 실행 분할버튼 — 정적 Chrome/Edge 대신 실제 설치 브라우저(/DEFBR)를
+    //   동적 표시하고, 선택 브라우저로 실제 실행(구 ws_html5_ws20.js _buildAppExecMenuItems 대응).
+    var APPEXEC_BR_ICON = { CHROME: { icon: "chrome", brand: true }, MSEDGE: { icon: "edge", brand: true }, DEV_BROWSER: { icon: "flask", brand: false } };
+    function _getAppExecBrowsers() {
+        var aDef = [];
+        try { aDef = oAPP.common.fnGetModelProperty("/DEFBR") || []; } catch (e) { }
+        if (!Array.isArray(aDef) || !aDef.length) { return APP_EXEC_BROWSERS.slice(); } // /DEFBR 미로드 시 폴백
+        var bPackaged = false; try { bPackaged = !!(parent.APP && parent.APP.isPackaged); } catch (e) { }
+        return aDef.map(function (o) {
+            var ic = APPEXEC_BR_ICON[o.NAME] || {};
+            var en = !(!o.NAME || o.ENABLED === false);
+            if (o.NAME === "DEV_BROWSER" && bPackaged) { en = false; }
+            return { key: o.NAME, text: o.DESC || o.NAME, icon: ic.icon, brand: ic.brand, disabled: !en };
+        });
+    }
+    // 선택 브라우저로 실행: /DEFBR 의 SELECTED 지정 후 ev_AppExec (WS10 은 AppNmInput 의 앱을 실행)
+    function _execAppInBrowser(sName) {
+        try {
+            var a = oAPP.common.fnGetModelProperty("/DEFBR") || [];
+            if (Array.isArray(a) && a.length) {
+                a.forEach(function (o) { o.SELECTED = (o.NAME === sName); });
+                oAPP.common.fnSetModelProperty("/DEFBR", a, true);
+            }
+        } catch (e) { }
+        _invoke("ev_AppExec", "");
+    }
+    // (구 _openAppExecBrowserMenu 제거 — 공통 buildSplitButton 에 흡수)
+
     var THEMES = [
         { key: "horizon_white", text: "Horizon White" },
         { key: "horizon_dark", text: "Horizon Dark" },
@@ -223,7 +271,7 @@
     //   sap 무관). ws_events.js 의 원본 핸들러 그대로 호출.
     //   Create(Ctrl+F12/버튼) → ev_AppCreate → 이름검증·존재확인 후 HTML5 생성 팝업
     //   (design/js/createApplicationPopup.js). ws_html5_shell.js override 참조.
-    var WIRED_EVENTS = { ev_AppCreate: 1, ev_AppDisplay: 1, ev_AppChange: 1, ev_NewWindow: 1 };
+    var WIRED_EVENTS = { ev_AppCreate: 1, ev_AppDisplay: 1, ev_AppChange: 1, ev_NewWindow: 1, ev_AppExec: 1 };
     function _invoke(sName, sLabel) {
         if (WIRED_EVENTS[sName] && window.oAPP && oAPP.events && typeof oAPP.events[sName] === "function") {
             try { oAPP.events[sName](); }
@@ -357,6 +405,74 @@
     // ws_html5_shell.js 의 fnShowFloatingFooterMsg/fnHideFloatingFooterMsg 가 호출하는 훅
     oAPP.ws10html.showFooter = _showFooter;
     oAPP.ws10html.hideFooter = _hideFooter;
+
+    // 공통 드롭다운 메뉴 헬퍼 노출 — WS20(ws_html5_ws20.js)의 App 실행 split 버튼 등이
+    // 동일한 .u4a-menu 컴포넌트를 재사용한다(UX 통일, 단일 소스).
+    //   openMenuAt(oAnchor, aItems, fnSelect, sAlign)  — aItems: {key,text,icon,brand,disabled,items,visible}
+    oAPP.ws10html.openMenuAt = _openMenuAt;
+    oAPP.ws10html.closeMenus = _closeMenus;
+
+    /********************************************************************
+     * [공통] split(본체+화살표) 메뉴 버튼 빌더 — WS10/WS20 단일 소스.
+     *   ★ 드롭다운 UX 규칙을 "구조적으로" 강제(메모리 menu-dropdown-left-align):
+     *     · 메뉴는 화살표가 아니라 버튼 전체(wrap) 좌측에 정렬(_openMenuAt(wrap,…,"left"))
+     *     · 열 때만 busy(prepare 비동기 동안), 이미 열려있으면 busy 없이 즉시 닫기(토글)
+     *     · 화살표에 data-menu-anchor → 외부클릭 닫힘이 화살표 클릭을 "바깥"으로 오인 방지
+     *   cfg = {
+     *     id, icon, brand, text, tooltip, sc,
+     *     onMain : fn()            본체 클릭(기본 동작)
+     *     getItems : fn()->[item]  드롭다운 항목(열 때마다 동적 호출; {key,text,icon,brand,disabled})
+     *     onPick : fn(item)        항목 선택
+     *     prepare : fn()->Promise  (옵션) 열기 전 비동기 준비 — 이 동안만 busy
+     *   }
+     ********************************************************************/
+    function _buildSplitButton(cfg) {
+        cfg = cfg || {};
+        var wrap = document.createElement("div");
+        wrap.className = "u4a-split";
+        if (cfg.id) { wrap.id = cfg.id; }
+
+        var main = document.createElement("button");
+        main.className = "u4a-split__main";
+        main.type = "button";
+        main.title = cfg.tooltip || (cfg.text ? (cfg.text + (cfg.sc ? " (" + cfg.sc + ")" : "")) : "");
+        main.innerHTML = (cfg.icon ? (cfg.brand ? '<i class="fa-brands fa-' + cfg.icon + '"></i>' : _fa(cfg.icon)) : "")
+            + (cfg.text ? "<span>" + cfg.text + "</span>" : "");
+        main.addEventListener("click", function () {
+            if (typeof cfg.onMain === "function") { try { cfg.onMain(); } catch (e) { console.error("[split] onMain", e); } }
+        });
+
+        var arrow = document.createElement("button");
+        arrow.className = "u4a-split__arrow";
+        arrow.type = "button";
+        arrow.title = cfg.text || "";
+        arrow.setAttribute("aria-haspopup", "true");
+        arrow.setAttribute("data-menu-anchor", "split");
+        arrow.innerHTML = (ICON && ICON.caret) ? ICON.caret : _fa("angle-down");
+        arrow.addEventListener("click", function () {
+            // 이미 열림 → busy/prepare 없이 즉시 닫기(토글)
+            if (wrap.getAttribute("aria-expanded") === "true") { _closeMenus(); return; }
+            function open() {
+                try { parent.setBusy(""); } catch (e) { }
+                var aItems = (typeof cfg.getItems === "function") ? (cfg.getItems() || []) : [];
+                // 앵커=wrap → 메뉴 좌측이 본체 시작에 정렬(치우침 방지)
+                _openMenuAt(wrap, aItems, function (it) {
+                    if (typeof cfg.onPick === "function") { try { cfg.onPick(it); } catch (e) { console.error("[split] onPick", e); } }
+                }, "left");
+            }
+            if (typeof cfg.prepare === "function") {
+                try { parent.setBusy("X"); } catch (e) { }   // 준비(느린 체크) 동안만 busy
+                Promise.resolve().then(function () { return cfg.prepare(); })
+                    .catch(function (e) { console.error("[split] prepare", e); })
+                    .then(open);
+            } else { open(); }
+        });
+
+        wrap.appendChild(main);
+        wrap.appendChild(arrow);
+        return wrap;
+    }
+    oAPP.ws10html.buildSplitButton = _buildSplitButton;
 
     /********************************************************************
      * 렌더 진입점 — fnOnInitRendering 이 호출
@@ -715,13 +831,13 @@
             .map(function (bi) {
                 var cfg = bi.cfg;
                 if (cfg.split) {
-                    // App 실행 분할버튼 → 브라우저 선택 서브메뉴(화살표 메뉴와 동일)
+                    // App 실행 분할버튼 → 동적 /DEFBR 브라우저 서브메뉴(화살표 메뉴와 동일, WS20 통일)
                     return {
                         icon: cfg.icon, text: cfg.text,
-                        items: APP_EXEC_BROWSERS.map(function (b) {
+                        items: _getAppExecBrowsers().map(function (b) {
                             return {
-                                icon: b.icon, brand: b.brand, text: b.text,
-                                action: function () { _invoke("ev_AppExec", cfg.text + " → " + b.text); }
+                                icon: b.icon, brand: b.brand, text: b.text, disabled: b.disabled,
+                                action: function () { _execAppInBrowser(b.key); }
                             };
                         })
                     };
@@ -731,29 +847,15 @@
         _openMenuAt(oAnchor, aItems, function (it) { if (typeof it.action === "function") { it.action(); } }, "right");
     }
 
+    // App 실행 split 버튼 — 공통 빌더(buildSplitButton)에 위임(정렬/busy/토글은 빌더가 강제).
     function _renderSplitButton(cfg) {
-        var wrap = document.createElement("div");
-        wrap.className = "u4a-split";
-        wrap.id = cfg.id;
-        var main = document.createElement("button");
-        main.className = "u4a-split__main";
-        main.type = "button";
-        main.title = cfg.text + " (" + cfg.sc + ")";
-        main.innerHTML = _fa(cfg.icon) + "<span>" + cfg.text + "</span>";
-        main.addEventListener("click", function () { _invoke(cfg.ev, cfg.text); });
-        var arrow = document.createElement("button");
-        arrow.className = "u4a-split__arrow";
-        arrow.type = "button";
-        arrow.title = cfg.text;
-        arrow.setAttribute("data-menu-anchor", "appexec");
-        arrow.innerHTML = ICON.caret;
-        arrow.addEventListener("click", function () {
-            var aItems = APP_EXEC_BROWSERS.map(function (b) { return { key: b.key, text: b.text, icon: b.icon, brand: b.brand }; });
-            _openMenuAt(arrow, aItems, function (it) { _invoke("ev_AppExec", cfg.text + " → " + it.text); }, "left");
+        return _buildSplitButton({
+            id: cfg.id, icon: cfg.icon, text: cfg.text, sc: cfg.sc,
+            onMain: function () { _invoke(cfg.ev, cfg.text); },                 // 본체 = 기본 브라우저로 실행
+            getItems: _getAppExecBrowsers,                                       // 동적 /DEFBR 목록
+            onPick: function (it) { _execAppInBrowser(it.key); },                // 선택 브라우저로 실행
+            prepare: (typeof oAPP.fn.fnBrowserStateModelRefresh === "function") ? oAPP.fn.fnBrowserStateModelRefresh : null
         });
-        wrap.appendChild(main);
-        wrap.appendChild(arrow);
-        return wrap;
     }
 
     /********************************************************************

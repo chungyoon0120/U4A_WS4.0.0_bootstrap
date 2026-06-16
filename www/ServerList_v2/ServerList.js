@@ -219,8 +219,9 @@
         accept: _fa("check"),
         decline: _fa("xmark"),
         clear: _fa("xmark"),
-        sortAsc: _fa("caret-up"),
-        sortDesc: _fa("caret-down"),
+        sortAsc: _fa("arrow-up"),
+        sortDesc: _fa("arrow-down"),
+        filter: _fa("filter"),
         // 메시지 박스 타입별 아이콘 (Confirm/Success/Error/Warning)
         confirm: _fa("circle-question"),
         success: _fa("circle-check"),
@@ -426,6 +427,9 @@
         try {
             const sWsLangu = await WSUTIL.getWsLanguAsync();
             const G = (nr) => WSUTIL.getWsMsgClsTxt(sWsLangu, "ZMSG_WS_COMMON_001", nr);
+            // 컬럼 필터 메뉴 라벨 (/U4A/CL_WS_COMMON: A68 필터 값 / A69 필터 초기화)
+            const C = (nr) => WSUTIL.getWsMsgClsTxt(sWsLangu, "/U4A/CL_WS_COMMON", nr);
+            oAPP.msg.FILTERVAL = C("A68"); oAPP.msg.CLEARFILTER = C("A69");
             oAPP.msg.M01 = G("007"); oAPP.msg.M02 = G("008"); oAPP.msg.M03 = G("009");
             oAPP.msg.M04 = G("010"); oAPP.msg.M05 = G("011"); oAPP.msg.M06 = G("012");
             oAPP.msg.M07 = G("013"); oAPP.msg.M08 = G("014"); oAPP.msg.M09 = G("015");
@@ -450,6 +454,7 @@
             oAPP.msg.M048 = "Unsaved data will be lost.";
             oAPP.msg.M049 = "Are you sure you want to exit the Program?";
             oAPP.msg.M017 = "A problem occurred while saving the server settings.";
+            oAPP.msg.FILTERVAL = "Filter Value"; oAPP.msg.CLEARFILTER = "Clear Filter";
         }
     };
 
@@ -1143,6 +1148,12 @@
 
         oAPP.attr._selectedTreeNodeData = oNodeData;
 
+        // 폴더 전환 시 컬럼 필터/정렬 초기화 — 폴더 간 필터가 새지 않도록.
+        //  (기본 정렬은 아래에서 name 오름차순으로 로드되는 원본 순서)
+        oAPP.attr._colFilters = {};
+        oAPP.attr._sortCol = null;
+        oAPP.attr._sortDir = null;
+
         M.setProperty("/SAPLogonItems", []);
 
         if (!oNodeData || !oNodeData._attributes) {
@@ -1311,27 +1322,48 @@
             { key: "name", label: L("serverName"), sortable: true, cls: "u4a-c-name" },
             { key: "systemid", label: L("sid"), sortable: true, cls: "u4a-c-sid", width: "5rem" },
             { key: "host", label: L("host"), sortable: true, cls: "u4a-c-host", width: "9rem" },
-            { key: "insno", label: L("sno"), sortable: false, align: "center", cls: "u4a-c-sno", width: "4rem" },
-            { key: "__action", label: L("settingsCol"), sortable: false, align: "center", cls: "u4a-c-action", width: "3.75rem" }
+            { key: "insno", label: L("sno"), sortable: true, align: "center", cls: "u4a-c-sno", width: "4rem" },
+            // 폭: 영문 라벨("Settings")이 셀 좌우 패딩(0.75rem) 안에 들어가도록 확보.
+            //  (구 3.75rem 는 아이콘 폭 기준이라 영문 헤더가 셀을 넘쳐 창 우측에 붙어 잘렸음)
+            { key: "__action", label: L("settingsCol"), sortable: false, align: "center", cls: "u4a-c-action", width: "5.5rem" }
         ];
 
+        const oFilters = oAPP.attr._colFilters || {};
         const oThead = _el("thead");
         const oHrow = _el("tr");
         for (const oCol of aCols) {
             const oTh = _el("th", oCol.cls);
-            oTh.appendChild(_el("span", null, oCol.label));
             if (oCol.width) { oTh.style.width = oCol.width; }
-            if (oCol.align === "center") { oTh.style.textAlign = "center"; }
+
+            // 라벨 + 표시자(정렬 caret / 필터 아이콘)를 한 줄 flex 로 배치
+            //  → 구: 라벨 뒤에 caret 을 그냥 붙여 컬럼 경계에 끼이던 문제 해소
+            const oInner = _el("div", "u4a-th__inner");
+            if (oCol.align === "center") { oInner.classList.add("u4a-th__inner--center"); }
+            oInner.appendChild(_el("span", "u4a-th__label", oCol.label));
+
             if (oCol.sortable) {
-                oTh.dataset.col = oCol.key;
-                if (oAPP.attr._sortCol === oCol.key) {
-                    // 정렬 표시 — Font Awesome caret (일반 문자 대신)
-                    const oSortIco = _el("span", "u4a-sort-ico");
-                    oSortIco.innerHTML = (oAPP.attr._sortDir === "desc") ? ICON.sortDesc : ICON.sortAsc;
-                    oTh.appendChild(oSortIco);
+                // 정렬/필터가 걸린 컬럼에만 표시자 노출
+                const bSorted = (oAPP.attr._sortCol === oCol.key);
+                const bFiltered = !!oFilters[oCol.key];
+                if (bSorted || bFiltered) {
+                    const oInd = _el("span", "u4a-th__ind");
+                    if (bSorted) {
+                        oInd.innerHTML += (oAPP.attr._sortDir === "desc") ? ICON.sortDesc : ICON.sortAsc;
+                    }
+                    if (bFiltered) {
+                        oInd.innerHTML += ICON.filter;
+                    }
+                    oInner.appendChild(oInd);
                 }
-                oTh.addEventListener("click", () => oAPP.fn.fnSortServerTable(oCol.key));
+                oTh.appendChild(oInner);
+                oTh.classList.add("u4a-th--menu");
+                oTh.dataset.col = oCol.key;
+                oTh.addEventListener("click", (ev) => {
+                    ev.stopPropagation();
+                    oAPP.fn.fnOpenColumnMenu(oCol, oTh);
+                });
             } else {
+                oTh.appendChild(oInner);
                 oTh.style.cursor = "default";
             }
             oHrow.appendChild(oTh);
@@ -1341,7 +1373,9 @@
 
         // 바디
         const oTbody = _el("tbody");
-        const aItems = M.getProperty("/SAPLogonItems") || [];
+        // 원본(/SAPLogonItems)은 보존하고, 화면에 그릴 뷰만 필터+정렬로 파생한다.
+        //  (저장상태 동기화·선택·삭제 흐름이 항상 전체 목록 기준으로 동작하도록)
+        const aItems = _buildServerView(M.getProperty("/SAPLogonItems") || []);
 
         if (aItems.length === 0) {
             const oTr = _el("tr", "u4a-table__nodata");
@@ -1488,23 +1522,132 @@
         }
     }
 
-    oAPP.fn.fnSortServerTable = function (sKey) {
-        // none → asc → desc → asc ... (UI5 컬럼 정렬 메뉴 대체)
-        if (oAPP.attr._sortCol === sKey) {
-            oAPP.attr._sortDir = (oAPP.attr._sortDir === "asc") ? "desc" : "asc";
-        } else {
-            oAPP.attr._sortCol = sKey;
-            oAPP.attr._sortDir = "asc";
+    /**
+     * 컬럼의 "화면 표시 텍스트" — 필터/정렬은 사용자가 보는 값 기준으로 동작한다.
+     *  (예: STATUS 는 내부값 true/false 가 아니라 Active/Inactive 텍스트로 필터)
+     */
+    function _colDisplayText(sKey, oItem) {
+        if (sKey === "ISSAVE") {
+            return (oItem.ISSAVE === true) ? L("active") : L("inactive");
         }
-        const aItems = M.getProperty("/SAPLogonItems") || [];
-        const iDir = (oAPP.attr._sortDir === "asc") ? 1 : -1;
-        aItems.sort((a, b) => {
-            const va = (a[sKey] == null) ? "" : String(a[sKey]);
-            const vb = (b[sKey] == null) ? "" : String(b[sKey]);
-            return va.localeCompare(vb) * iDir;
+        const v = oItem[sKey];
+        return (v == null) ? "" : String(v);
+    }
+
+    /**
+     * 원본 목록 → 화면 뷰(필터 AND 결합 + 단일 컬럼 정렬). 원본 배열은 변형하지 않는다.
+     */
+    function _buildServerView(aSource) {
+        let aView = aSource.slice();
+
+        // 1) 필터 (활성화된 모든 컬럼 AND, 대소문자 무시 contains)
+        const oF = oAPP.attr._colFilters || {};
+        const aKeys = Object.keys(oF).filter((k) => oF[k]);
+        if (aKeys.length) {
+            aView = aView.filter((oItem) =>
+                aKeys.every((k) => _colDisplayText(k, oItem).toLowerCase().indexOf(oF[k]) !== -1)
+            );
+        }
+
+        // 2) 정렬 (선택된 컬럼 1개)
+        if (oAPP.attr._sortCol) {
+            const sKey = oAPP.attr._sortCol;
+            const iDir = (oAPP.attr._sortDir === "desc") ? -1 : 1;
+            aView.sort((a, b) =>
+                _colDisplayText(sKey, a).localeCompare(_colDisplayText(sKey, b), undefined, { numeric: true }) * iDir
+            );
+        }
+
+        return aView;
+    }
+
+    /********************************************************************
+     * 컬럼 헤더 메뉴 (필터 input + 오름/내림차순 + 초기화)
+     *  — 구 fnSortServerTable(단순 asc/desc 토글)을 대체.
+     *  공통 팝오버 컴포넌트(.u4a-menu / _positionMenu / _bindOutsideClose) 재사용.
+     ********************************************************************/
+    oAPP.fn.fnOpenColumnMenu = function (oCol, oAnchorTh) {
+        _closeAllMenus();
+
+        oAPP.attr._colFilters = oAPP.attr._colFilters || {};
+
+        const oMenu = _el("div", "u4a-menu u4a-colmenu");
+        oMenu.setAttribute("role", "menu");
+        // 메뉴 내부 클릭이 헤더(정렬 토글 등)로 버블링되지 않도록 차단
+        oMenu.addEventListener("click", (ev) => ev.stopPropagation());
+
+        // ── 필터 입력 (라이브) ──
+        const oFilterWrap = _el("div", "u4a-colmenu__filter");
+        const oInput = _el("input", "u4a-input");
+        oInput.type = "text";
+        oInput.placeholder = oAPP.msg.FILTERVAL || ""; // /U4A/CL_WS_COMMON A68 (필터 값)
+        oInput.value = oAPP.attr._colFilters[oCol.key] || "";
+        // 입력 즉시가 아니라 Enter / 포커스 아웃(blur) 시점에만 필터 적용.
+        const _applyFilter = () => {
+            const sVal = oInput.value.trim().toLowerCase();
+            const sCur = oAPP.attr._colFilters[oCol.key] || "";
+            if (sVal === sCur) { return; } // 변화 없으면 재렌더 생략(선택 유지)
+            if (sVal) { oAPP.attr._colFilters[oCol.key] = sVal; }
+            else { delete oAPP.attr._colFilters[oCol.key]; }
+            oAPP.fn.fnRenderServerTable(); // 메뉴는 body 에 있어 재렌더에도 유지됨
+        };
+        oInput.addEventListener("keydown", (ev) => {
+            if (ev.key === "Enter") { ev.preventDefault(); _applyFilter(); _closeAllMenus(); }
         });
-        M.setProperty("/SAPLogonItems", aItems);
-        oAPP.fn.fnRenderServerTable();
+        oInput.addEventListener("blur", _applyFilter);
+        oFilterWrap.appendChild(oInput);
+        oMenu.appendChild(oFilterWrap);
+
+        oMenu.appendChild(_el("div", "u4a-colmenu__sep"));
+
+        // ── 정렬 (오름/내림차순) — 라벨은 ZMSG_WS_COMMON_001 810/811 ──
+        //  현재 적용 중인 방향을 다시 누르면 정렬 해제(토글 off).
+        const _mkSort = (sDir, sIcon, sLabel) => {
+            const oRow = _el("div", "u4a-menu__item");
+            oRow.setAttribute("role", "menuitem");
+            oRow.tabIndex = 0;
+            oRow.innerHTML = sIcon + "<span>" + _esc(sLabel) + "</span>";
+            const bActive = (oAPP.attr._sortCol === oCol.key && oAPP.attr._sortDir === sDir);
+            if (bActive) { oRow.dataset.active = "true"; }
+            oRow.addEventListener("click", () => {
+                if (bActive) {
+                    // 같은 방향 재클릭 → 정렬 해제
+                    oAPP.attr._sortCol = null;
+                    oAPP.attr._sortDir = null;
+                } else {
+                    oAPP.attr._sortCol = oCol.key;
+                    oAPP.attr._sortDir = sDir;
+                }
+                oAPP.fn.fnRenderServerTable();
+                _closeAllMenus();
+            });
+            return oRow;
+        };
+        oMenu.appendChild(_mkSort("asc", ICON.sortAsc, T("810")));   // 오름차순 / Ascending
+        oMenu.appendChild(_mkSort("desc", ICON.sortDesc, T("811"))); // 내림차순 / Descending
+
+        oMenu.appendChild(_el("div", "u4a-colmenu__sep"));
+
+        // ── 필터 초기화 (/U4A/CL_WS_COMMON A69) — 이 컬럼 필터만 해제 ──
+        const oClear = _el("div", "u4a-menu__item");
+        oClear.setAttribute("role", "menuitem");
+        oClear.tabIndex = 0;
+        oClear.innerHTML = ICON.clear + "<span>" + _esc(oAPP.msg.CLEARFILTER || "") + "</span>";
+        // 활성 필터가 없으면 비활성 표시
+        if (!oAPP.attr._colFilters[oCol.key]) { oClear.setAttribute("aria-disabled", "true"); }
+        oClear.addEventListener("click", () => {
+            if (!oAPP.attr._colFilters[oCol.key]) { return; }
+            delete oAPP.attr._colFilters[oCol.key];
+            oInput.value = "";
+            oAPP.fn.fnRenderServerTable();
+            _closeAllMenus();
+        });
+        oMenu.appendChild(oClear);
+
+        document.body.appendChild(oMenu);
+        _positionMenu(oMenu, oAnchorTh);
+        _bindOutsideClose(oMenu);
+        setTimeout(() => oInput.focus(), 0);
     };
 
     /********************************************************************

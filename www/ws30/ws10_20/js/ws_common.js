@@ -2559,7 +2559,8 @@
                 title: oAPP.common.fnGetMsgClsText("/U4A/MSG_WS", "374"), // SAPGUI Launch
                 description: oAPP.common.fnGetMsgClsText("/U4A/MSG_WS", "373"), // Please wait a few minutes.
                 illustrationType: "tnt-Radar",
-                illustrationSize: sap.m.IllustratedMessageSize.Dialog
+                // [HTML5] sap.m.IllustratedMessageSize.Dialog 은 enum=문자열 "Dialog" — sap 제거(값 동일).
+                illustrationSize: "Dialog"
             }
         };
 
@@ -4164,7 +4165,8 @@ function sendAjax(sPath, oFormData, fn_success, bIsBusy, bIsAsync, meth, fn_erro
             sDesc += "( Request Timeout )";
 
             let sIllustType = "tnt-SessionExpired";
-            let sIllustSize = sap.m.IllustratedMessageSize.Dialog;
+            // HTML5 컨텍스트엔 sap 없음 → 크기 enum 가드(미정의 시 문자열 "Dialog").
+            let sIllustSize = (typeof sap !== "undefined" && sap.m && sap.m.IllustratedMessageSize) ? sap.m.IllustratedMessageSize.Dialog : "Dialog";
 
             parent.IPCRENDERER.send('if-browser-close', {
                 ACTCD: "A", // 나를 제외한 나머지는 다 죽인다.
@@ -4175,8 +4177,8 @@ function sendAjax(sPath, oFormData, fn_success, bIsBusy, bIsAsync, meth, fn_erro
             // 일러스트 메시지 팝업을 띄운다
             oAPP.fn.fnShowIllustMsgDialog(sTitle, sDesc, sIllustType, sIllustSize, fnSessionTimeOutDialogOk);
 
-            // 화면 Lock 해제
-            sap.ui.getCore().unlock();
+            // 화면 Lock 해제 (HTML5 컨텍스트엔 sap 없음 — 가드)
+            if (typeof sap !== "undefined" && sap.ui && sap.ui.getCore) { sap.ui.getCore().unlock(); }
 
             // Busy 종료
             parent.setBusy('');
@@ -4209,7 +4211,8 @@ function sendAjax(sPath, oFormData, fn_success, bIsBusy, bIsAsync, meth, fn_erro
             sCleanHtml = "Server connection fail!!"; // [MSG]
         }
 
-        parent.showMessage(sap, 20, 'E', sCleanHtml, fn_callback);
+        // HTML5(UI5 제거) 메인 컨텍스트에선 sap 미정의 → 1번째 인자 가드(있으면 sap, 없으면 null).
+        parent.showMessage((typeof sap !== "undefined" ? sap : null), 20, 'E', sCleanHtml, fn_callback);
 
         function fn_callback() {
 
@@ -4221,8 +4224,8 @@ function sendAjax(sPath, oFormData, fn_success, bIsBusy, bIsAsync, meth, fn_erro
 
         }
 
-        // 화면 Lock 해제
-        sap.ui.getCore().unlock();
+        // 화면 Lock 해제 (HTML5 컨텍스트엔 sap 없음 — 가드)
+        if (typeof sap !== "undefined" && sap.ui && sap.ui.getCore) { sap.ui.getCore().unlock(); }
 
         // Busy 종료
         parent.setBusy('');

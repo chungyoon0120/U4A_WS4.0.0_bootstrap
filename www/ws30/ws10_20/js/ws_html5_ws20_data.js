@@ -258,6 +258,24 @@
                     oAPP.DATA = oAPP.DATA || {};
                     oAPP.DATA.APPDATA = param.APPDATA;
 
+                    // ★ 변경 버퍼(oAPP.attr.prev) 리셋 — getAppData 가 APPDATA 를 "새 서버 데이터"로
+                    //   교체하므로, 이전 APPDATA.T_0015 행을 참조(+사용자 편집으로 변형)하던 prev 는
+                    //   전부 무효(stale)다. 비우지 않으면 _ensurePrev 가 기존 prev 를 그대로 반환해
+                    //   "저장 안 한 편집값"이 Display 전환/재조회 후에도 되살아난다.
+                    //   (서버 재조회 = 항상 최신 상태 기준 → 미저장 편집 폐기가 원본 의미와 일치.
+                    //    Save/Activate 후 재조회 시에도 저장된 서버값으로 prev 가 새로 구성된다.)
+                    oAPP.attr.prev = {};
+
+                    // ★ 현재 표시 중인 속성 패널 데이터도 비운다 — getAppData 는 트리(zTREE)만
+                    //   재구성하고 T_ATTR/uiinfo(노드 선택 시에만 _updateDOCAttrList 가 재구성)는
+                    //   그대로 둔다. 비우지 않으면, Display 전환(미저장 폐기) 재조회 후에도
+                    //   "변경 모드에서 편집된 stale T_ATTR 행"이 (편집 비활성 상태로) 그대로 렌더되어
+                    //   저장 안 한 값이 살아있는 것처럼 보인다. 비우면 빈 패널로 시작 → 미리보기
+                    //   로드 완료 후 fireCellClick(ROOT) 이 fresh prev(=새 APPDATA) 로 재구성한다.
+                    oAPP.attr.oModel.oData.T_ATTR = [];
+                    oAPP.attr.oModel.oData.uiinfo = undefined;
+                    try { if (typeof oAPP.fn.fnRenderWs20AttrRows === "function") { oAPP.fn.fnRenderWs20AttrRows(); } } catch (e) { }
+
                     //application ui design, attribute 정보 매핑.
                     oAPP.attr.oModel.oData.TREE = oAPP.DATA.APPDATA.T_0014;
 
@@ -288,28 +306,10 @@
                     //UI design tree영역 체크박스 활성여부 처리. (원본 547행)
                     _safeDecorate("setTreeChkBoxEnable", oRoot);
 
-                    //UI design tree 영역 UI에 따른 ICON 세팅. (원본 550행, LIB.T_0022 의존 → 가드)
+                    //UI design tree 영역 UI에 따른 ICON 세팅. (원본 550행)
+                    //   ws_html5_ws20_edit.js 의 공통 setTreeUiIcon 이 T_0022.UICON → 경로 + icon_visible
+                    //   세팅(insert 경로와 동일 단일 소스). 기존 인라인 폴백 제거.
                     _safeDecorate("setTreeUiIcon", oRoot);
-
-                    // [아이콘 보강] UI별 이미지 아이콘 — 원본 setTreeUiIcon 의 UICON 로직 이식.
-                    //   uiDesignArea.js(UI5) 미로드 환경에서도 각 노드에 UICON/icon_visible 세팅
-                    //   (T_0022.UICON → fnGetSapIconPath(...icons/x.gif)). 트리 렌더가 이 값을 표시.
-                    try {
-                        var _aT0022 = (oAPP.DATA.LIB && Array.isArray(oAPP.DATA.LIB.T_0022)) ? oAPP.DATA.LIB.T_0022 : [];
-                        (function _ws20SetIc(aN) {
-                            if (!Array.isArray(aN)) { return; }
-                            for (var _i = 0; _i < aN.length; _i++) {
-                                var _n = aN[_i];
-                                if (!_n) { continue; }
-                                if ((typeof _n.UICON === "undefined" || _n.UICON === "") && typeof oAPP.fn.fnGetSapIconPath === "function") {
-                                    var _ls = _aT0022.find(function (a) { return a.UIOBK === _n.UIOBK; });
-                                    if (_ls && _ls.UICON) { _n.UICON = oAPP.fn.fnGetSapIconPath(_ls.UICON); }
-                                }
-                                _n.icon_visible = !!(_n.UICON && _n.UICON !== "");
-                                if (Array.isArray(_n.zTREE)) { _ws20SetIc(_n.zTREE); }
-                            }
-                        })(oAPP.attr.oModel.oData.zTREE);
-                    } catch (e) { console.warn("[HTML5][WS20][data] tree icon set:", e && e.message); }
 
                     //UI design tree 영역의 action icon 활성여부 처리. (원본 553행)
                     _safeDecorate("designSetActionIcon", oRoot);
@@ -446,6 +446,7 @@
 
             //undo, redo 이력 초기화 + 버튼 활성 여부 처리. (원본 764~767행 — node 모듈)
             try {
+                if (oAPP.fn.fnWs20ClearHistory) { oAPP.fn.fnWs20ClearHistory(); } // HTML5 스냅샷 undo/redo
                 var _oUndoRedo = parent.require(oAPP.oDesign.pathInfo.undoRedo);
                 _oUndoRedo.clearHistory();
                 _oUndoRedo.setUndoRedoButtonEnable();
@@ -526,6 +527,7 @@
 
             //undo, redo 이력 초기화 + 버튼 활성 여부 처리. (원본 817~820행)
             try {
+                if (oAPP.fn.fnWs20ClearHistory) { oAPP.fn.fnWs20ClearHistory(); } // HTML5 스냅샷 undo/redo
                 var _oUndoRedo2 = parent.require(oAPP.oDesign.pathInfo.undoRedo);
                 _oUndoRedo2.clearHistory();
                 _oUndoRedo2.setUndoRedoButtonEnable();

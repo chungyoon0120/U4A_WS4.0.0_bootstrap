@@ -461,15 +461,109 @@
         };
     }
 
+    /**
+     * 공용 커스텀 툴팁 — [data-tip] 요소에 hover 시 테마 플로팅 툴팁을 띄운다.
+     *   네이티브 title 보다 예쁘고(테마색/라운드/그림자/페이드), overflow:hidden 컨테이너에서도
+     *   잘리지 않도록 body 에 단일 엘리먼트로 띄운다. (문서 전역 위임 — 한 번만 init)
+     *   · data-tip          : 표시할 텍스트
+     *   · data-tip-trunc    : (선택) 있으면 "말줄임(넘침)된 경우에만" 표시
+     */
+    function initTooltip() {
+        if (global.__u4aTipInit) { return; }
+        global.__u4aTipInit = true;
+
+        let oTip = null, iTimer = null, oCur = null;
+        let _mx = 0, _my = 0;   // 최근 커서 좌표(텍스트가 안 보일 수 있는 영역은 커서 기준 배치)
+        document.addEventListener("mousemove", function (e) { _mx = e.clientX; _my = e.clientY; }, true);
+
+        function _ensure() {
+            if (!oTip) {
+                oTip = _el("div", "u4a-tooltip");
+                oTip.setAttribute("role", "tooltip");
+                document.body.appendChild(oTip);
+            }
+            return oTip;
+        }
+        function _hide() {
+            if (iTimer) { clearTimeout(iTimer); iTimer = null; }
+            if (oTip) { oTip.dataset.show = "false"; }
+            oCur = null;
+        }
+        function _show(el) {
+            const sText = el.getAttribute("data-tip");
+            if (!sText) { return; }
+            // 말줄임 전용 표시:
+            //   · data-tip-trunc      → el 자신이 잘렸을 때만
+            //   · data-tip-trunc-sel  → 지정 자식(예: 트리 이름)이 잘렸을 때만 (자식이 0폭이라 hover 못해도 행에서 동작)
+            const sSel = el.getAttribute("data-tip-trunc-sel");
+            const oTrunc = sSel ? el.querySelector(sSel) : (el.hasAttribute("data-tip-trunc") ? el : null);
+            if (oTrunc && oTrunc.scrollWidth <= oTrunc.clientWidth + 1) { return; }
+
+            const t = _ensure();
+            t.textContent = sText;
+            t.dataset.show = "true";              // 먼저 보이게 해야 offset 측정 가능
+            const tw = t.offsetWidth, th = t.offsetHeight;
+            let left, top, flipTop;
+            if (sSel) {
+                // 텍스트가 안 보일 수 있는 영역(트리 행 등) → 커서 옆에 배치
+                left = _mx + 12;
+                top = _my + 18;
+                flipTop = _my - th - 8;
+            } else {
+                // 일반(버튼/아이콘) → 요소 바로 아래 정렬
+                const r = el.getBoundingClientRect();
+                left = r.left;
+                top = r.bottom + 6;
+                flipTop = r.top - th - 6;
+            }
+            left = Math.min(Math.max(4, left), window.innerWidth - tw - 4);
+            if (top + th > window.innerHeight - 4) { top = Math.max(4, flipTop); } // 아래 공간 부족 시 위로
+            t.style.left = left + "px";
+            t.style.top = top + "px";
+        }
+
+        // 네이티브 title → data-tip 자동 승격: 앱 전역의 모든 title 툴팁을 테마 커스텀 툴팁으로 통일.
+        //   (OS 기본 툴팁 중복 방지로 title 제거, 접근성 위해 aria-label 로 보존)
+        function _promote(el) {
+            if (!el.hasAttribute("title")) { return; }
+            const sT = el.getAttribute("title");
+            if (sT) {
+                el.setAttribute("data-tip", sT);
+                if (!el.hasAttribute("aria-label")) { el.setAttribute("aria-label", sT); }
+            }
+            el.removeAttribute("title");
+        }
+        document.addEventListener("mouseover", function (e) {
+            const el = e.target.closest && e.target.closest("[data-tip],[title]");
+            if (!el) { return; }
+            _promote(el);
+            if (el === oCur) { return; }
+            oCur = el;
+            if (iTimer) { clearTimeout(iTimer); }
+            iTimer = setTimeout(function () { _show(el); }, 350);
+        }, true);
+        document.addEventListener("mouseout", function (e) {
+            const el = e.target.closest && e.target.closest("[data-tip]");
+            if (el && el === oCur) { _hide(); }
+        }, true);
+        document.addEventListener("mousedown", _hide, true);
+        window.addEventListener("scroll", _hide, true);
+        window.addEventListener("blur", _hide);
+    }
+
     const U4AUI = {
         el: _el,
         createSelect: createSelect,
         attachSuggest: attachSuggest,
         attachClear: attachClear,
-        attachOverflow: attachOverflow
+        attachOverflow: attachOverflow,
+        initTooltip: initTooltip
     };
 
     global.U4AUI = U4AUI;
+
+    // 커스텀 툴팁 전역 1회 초기화 (모든 화면 공통 — [data-tip] 요소에 자동 적용)
+    try { initTooltip(); } catch (e) { }
 
     // CommonJS(Electron nodeIntegration) 환경에서도 require 가능하게
     if (typeof module === "object" && module.exports) {

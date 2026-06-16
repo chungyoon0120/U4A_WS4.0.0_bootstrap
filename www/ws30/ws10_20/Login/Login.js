@@ -1345,7 +1345,7 @@ var oAPP = (function () {
         oDlg.className = "u4a-dialog u4a-login__verdlg";
         oDlg.innerHTML =
             `<div class="u4a-dialog__body u4a-login__verdlg-body">` +
-            `<div class="u4a-login__verdlg-illust" id="u4aWsVerIllust">${ICON.spinner}</div>` +
+            `<div class="u4a-login__verdlg-illust" id="u4aWsVerIllust"><div class="u4a-busy__spinner"></div></div>` +
             `<div class="u4a-login__verdlg-title" id="u4aWsVerTitle"></div>` +
             `<div class="u4a-login__verdlg-desc" id="u4aWsVerDesc"></div>` +
             `<progress class="u4a-login__verdlg-progress" id="u4aWsVerProgress" max="100" hidden></progress>` +
@@ -1378,8 +1378,10 @@ var oAPP = (function () {
         }
         const oIllust = document.getElementById("u4aWsVerIllust");
         if (oIllust) {
-            oIllust.innerHTML = (o.ILLUSTTYPE === "sapIllus-SuccessHighFive") ? ICON.success : ICON.spinner;
-            oIllust.dataset.spin = (o.ILLUSTTYPE === "sapIllus-SuccessHighFive") ? "false" : "true";
+            const bDone = (o.ILLUSTTYPE === "sapIllus-SuccessHighFive");
+            // 완료=성공 아이콘, 진행중=공통 busy 스피너(.u4a-busy__spinner, 셸/ServerList 와 동일 이중 링)
+            oIllust.innerHTML = bDone ? ICON.success : '<div class="u4a-busy__spinner"></div>';
+            oIllust.dataset.spin = bDone ? "false" : "true";
         }
     }
     oModel._observers["/BUSYPOP"] = _fnSyncVersionDialog;
@@ -2125,6 +2127,12 @@ var oAPP = (function () {
      * 화면 렌더링 이후 초기화 (UI5 attachInit/UIUpdated 대체)
      ************************************************************************/
     async function _onViewReady() {
+
+        // ★ 런치 초기화(브라우저 체크 / 메시지 / 언어·버전·권한 등 서버통신) 동안 busy 표시.
+        //   이 구간엔 로그인 폼도 아직 hidden 이라 빈 화면만 보였다(스피너 누락).
+        //   해제: 정상 경로는 아래 _fnFadeInContent 직전 setDomBusy(""), SSO 분기는
+        //   ev_login 이 busy 를 그대로 이어받아 처리한다.
+        parent.setDomBusy("X");
 
         // Default Browser check
         await oAPP.fn.fnCheckIstalledBrowser();

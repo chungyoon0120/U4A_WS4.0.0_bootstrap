@@ -79,20 +79,22 @@
     /************************************************************************
      * 메시지 텍스트 안전 조회 (모델 미초기화/미로그인 폴백) — 기존 W1~W3 패턴.
      ************************************************************************/
-    function _msg(sNum, sFallback) {
+    // 언어 = 서버 메시지 클래스 단일 출처(원본 동일). 내부 영문 폴백 보관 금지(2026-06-16 지시).
+    //   미조회/("클래스|번호" 형태) 시 코드/번호 자체 반환.
+    function _msg(sNum) {
         try {
             var s = APPCOMMON.fnGetMsgClsText("/U4A/CL_WS_COMMON", sNum);
-            if (s != null && s !== "") { return s; }
+            if (s != null && s !== "" && s.indexOf("|") === -1) { return s; }
         } catch (e) { }
-        return sFallback;
+        return sNum;
     }
 
-    function _wsMsg(sNr, sFallback) {
+    function _wsMsg(sNr) {
         try {
             var s = parent.WSUTIL.getWsMsgClsTxt("", "ZMSG_WS_COMMON_001", sNr);
-            if (s) { return s; }
+            if (s && s.indexOf("|") === -1) { return s; }
         } catch (e) { }
-        return sFallback;
+        return sNr;
     }
 
     /************************************************************************
@@ -970,6 +972,190 @@
 
 
         };  //attr 라인에 따른 style 처리.
+    }
+
+    //attribute 예외처리 — icon 처리. (원본 uiAttributeArea.js 7851행 1:1)
+    //   ★ 맨 첫 줄에서 icon2_visb=false 로 help(클라이언트이벤트) 아이콘을 기본
+    //   비활성화하고, 특정 속성(AppID/F4Help/이벤트/아이콘속성 등)에서만 다시 켠다.
+    //   이 함수를 이식하지 않으면 모든 프로퍼티 행에 help "i" 아이콘이 떠버린다.
+    //   (T_CEVT/WSUTIL 툴팁만 미로딩 대비 가드 추가, 나머지는 원본 1:1)
+    if (typeof oAPP.fn.setExcepAttr !== "function") {
+        oAPP.fn.setExcepAttr = function (is_attr, is_0023) {
+
+            //default help(client event) 아이콘 비활성 처리.
+            is_attr.icon2_visb = false;
+
+            //appcontainer의 AppID 프로퍼티인경우.
+            if (is_attr.UIATK === "EXT00000030") {
+
+                //상세보기 아이콘 처리.
+                is_attr.icon1_src = "sap-icon://inspection";
+                is_attr.icon2_src = "sap-icon://delete";
+
+                //아이콘 활성 처리.
+                is_attr.icon2_visb = true;
+
+                return;
+            }
+
+            //appcontainer의 description 프로퍼티 icon 비활성 처리.
+            if (is_attr.UIATK === "EXT00000031") {  //AppDescript
+
+                //상세보기 아이콘 처리.
+                is_attr.icon1_src = undefined;
+                is_attr.icon2_src = undefined;
+                is_attr.icon1_visb = false;
+                is_attr.icon2_visb = false;
+                return;
+
+            }
+
+            //3.5.6-16 버전 패치가 적용된 서버가 아닌경우.
+            if (oAPP.common.checkWLOList("C", "UHAK901253") !== true) {
+
+                //기존 로직의 width, height 프로퍼티 바인딩 불가 처리.
+                if (is_attr.UIATK === "EXT00000032" || is_attr.UIATK === "EXT00000033") {
+                    //상세보기 아이콘 처리.
+                    is_attr.icon1_src = undefined;
+                    is_attr.icon2_src = undefined;
+                    is_attr.icon1_visb = false;
+                    is_attr.icon2_visb = false;
+                    return;
+                }
+
+            }
+
+            //selectOption2의 F4HelpID, F4HelpReturnFIeld 프로퍼티인경우.
+            if (is_attr.UIATK === "EXT00001188" ||   //F4HelpID
+                is_attr.UIATK === "EXT00001189") {    //F4HelpReturnFIeld
+
+                //상세보기 아이콘 처리.
+                is_attr.icon1_src = "sap-icon://inspection";
+                is_attr.icon2_src = "sap-icon://delete";
+
+                //아이콘 활성 처리.
+                is_attr.icon2_visb = true;
+
+                //f4 help 제거 아이콘 색상.
+                is_attr.icon2_color = C_ATTR_SEL_OPT_F4_ICON_COLOR;
+
+                return;
+            }
+
+            //selectOption3의 F4HelpID, F4HelpReturnFIeld 프로퍼티인경우.
+            if (is_attr.UIATK === "EXT00002534" ||   //F4HelpID
+                is_attr.UIATK === "EXT00002535") {    //F4HelpReturnFIeld
+
+                //상세보기 아이콘 처리.
+                is_attr.icon2_src = "sap-icon://delete";
+
+                //아이콘 활성 처리.
+                is_attr.icon2_visb = true;
+
+                //valueHelpOnly 바인딩 필드 true 처리.
+                is_attr.F4Only = true;
+
+                //f4 help 제거 아이콘 색상.
+                is_attr.icon2_color = C_ATTR_SEL_OPT_F4_ICON_COLOR;
+
+                return;
+            }
+
+            //TABLE의 autoGrowing 프로퍼티인경우.
+            if (is_attr.UIATK === "EXT00001347" ||   //sap.ui.table.Table autoGrowing
+                is_attr.UIATK === "EXT00001348" ||   //sap.m.Table autoGrowing
+                is_attr.UIATK === "EXT00001349") {    //sap.m.List autoGrowing
+
+                //상세보기 아이콘 처리.
+                is_attr.icon1_src = undefined;
+                is_attr.icon2_src = undefined;
+                is_attr.icon1_visb = false;
+                is_attr.icon2_visb = false;
+                return;
+            }
+
+            //useBackToTopButton 프로퍼티인경우.
+            if (is_attr.UIATK === "EXT00002374" ||   //sap.m.Page useBackToTopButton
+                is_attr.UIATK === "EXT00002378" ||   //sap.uxap.ObjectPageLayout useBackToTopButton
+                is_attr.UIATK === "EXT00002379") {    //sap.f.DynamicPage
+
+                //상세보기 아이콘 처리.
+                is_attr.icon1_src = undefined;
+                is_attr.icon2_src = undefined;
+                is_attr.icon1_visb = false;
+                is_attr.icon2_visb = false;
+                return;
+            }
+
+            //sap.ui.core.HTML UI의 content 프로퍼티인경우.
+            if (is_attr.UIATK === "AT000011858") {
+
+                //help 아이콘 -> 상세 아이콘 처리.
+                is_attr.icon2_src = "sap-icon://inspection";
+
+                //아이콘 활성 처리.
+                is_attr.icon2_visb = true;
+
+                return;
+            }
+
+            //아이콘 사용 가능한 프로퍼티인경우. 신규 아이콘 기능을 사용 가능한 경우.
+            if (oAPP.fn.attrIsIconProp(is_attr) && is_attr.ISBND === "" &&
+                oAPP.common.checkWLOList("C", "UHAK900630")) {
+
+                is_attr.icon2_src = "sap-icon://favorite";
+
+                //아이콘 색상 처리.
+                is_attr.icon2_color = C_ATTR_FAV_ICON_COLOR;
+
+                //아이콘 활성 처리.
+                is_attr.icon2_visb = true;
+
+                //아이콘 툴팁 구성. (078 Icon favorite list)
+                try {
+                    is_attr.icon2_ttip = "🌟\n" + parent.WSUTIL.getWsMsgClsTxt(oAPP.oDesign.settings.GLANGU, "ZMSG_WS_COMMON_001", "078");
+                } catch (e) { }
+
+            }
+
+            //bind 처리된건인경우.
+            if (is_attr.ISBND === "X") {
+
+                //바인딩 아이콘 처리
+                is_attr.icon1_src = "sap-icon://complete";
+                is_attr.icon1_color = "#66ff66";  //바인딩(서버이벤트) 색상 필드
+
+                return;
+
+            }
+
+            //이벤트건인경우.
+            if (is_attr.UIATY === "2") {
+
+                //아이콘 활성 처리.
+                is_attr.icon2_visb = true;
+
+                //이벤트가 설정되어있다면 아이콘 색상 처리.
+                if (is_attr.UIATV !== "") {
+                    is_attr.icon1_color = "#66ff66";  //바인딩(서버이벤트) 색상 필드
+                }
+
+                //클라이언트 이벤트 존재여부 확인. ([HTML5] APPDATA/T_CEVT 미로딩 가드)
+                var l_find = (oAPP.DATA.APPDATA && Array.isArray(oAPP.DATA.APPDATA.T_CEVT))
+                    ? oAPP.DATA.APPDATA.T_CEVT.find(a => a.OBJID === is_attr.OBJID + is_attr.UIASN)
+                    : undefined;
+
+                if (typeof l_find !== "undefined") {
+
+                    //클라이언트 이벤트 아이콘, 색상 처리.
+                    is_attr.icon2_src = "sap-icon://syntax";
+                    is_attr.icon2_color = "#66ff66";  //바인딩(서버이벤트) 색상 필드
+
+                }
+
+            }
+
+        };  // attribute 예외처리
     }
 
     //sap.m.UploadCollection, sap.ui.unified.FileUploader UI의 uploadUrl 프로퍼티 예외처리. (원본 6949행 1:1)
@@ -2168,9 +2354,8 @@
             //입력필드 입력 가능여부 처리.
             oAPP.fn.setAttrEditable(oAPP.attr.oModel.oData.T_ATTR[i]);
 
-            //icon 처리. (원본 setExcepAttr(7851행) — UI 타입별 예외 대형 분기.
-            // 데이터성이나 분량이 커 W4 에선 미이식: 정의돼 있으면 호출, 없으면 skip)
-            _safeCall("setExcepAttr", [oAPP.attr.oModel.oData.T_ATTR[i]]);
+            //icon 처리. (원본 7368행 1:1 — setExcepAttr: help 아이콘 기본 비활성 + 예외 활성)
+            oAPP.fn.setExcepAttr(oAPP.attr.oModel.oData.T_ATTR[i]);
 
             //필수 입력 ATTR의 필수 입력 표현 처리.
             oAPP.fn.attrSetRequireIcon(oAPP.attr.oModel.oData.T_ATTR[i]);
@@ -2794,25 +2979,28 @@
      * ******************************************************************** */
 
     // sap-icon → 표시용 글리프 매핑 (원본 sap.ui.core.Icon 아이콘 폰트 대체)
-    var _ICON_GLYPH = {
-        "sap-icon://fallback": "🔗",            // 바인딩
-        "sap-icon://sys-help": "?",             // help
-        "sap-icon://developer-settings": "⚙",   // 서버이벤트
-        "sap-icon://syntax": "{}",              // 클라이언트 이벤트
-        "sap-icon://warning2": "⚠",             // aggregation help
-        "sap-icon://inspection": "🔍",          // 상세보기
-        "sap-icon://delete": "✕",               // 삭제
-        "sap-icon://favorite": "★",             // 즐겨찾기/필수
-        "sap-icon://popup-window": "⧉",         // 팝업 호출형 버튼
-        "sap-icon://customize": "⚙",            // property
-        "sap-icon://border": "▣",               // event
-        "sap-icon://complete": "✓",             // event(wait off)
-        "sap-icon://color-fill": "◇",           // aggregation 0:1
-        "sap-icon://dimension": "◆"             // aggregation 0:N
+    // sap-icon URI → FontAwesome(solid) 이름. (구: 유니코드 글리프 → 깨짐/이모지화. 원본 sap.ui.core.Icon
+    //   의 의미를 유지하되 FA 아이콘으로 렌더한다 — 유니코드 사용 금지)
+    var _ICON_FA = {
+        "sap-icon://fallback": "link",                      // 바인딩(서버이벤트)
+        "sap-icon://sys-help": "circle-question",           // help(클라이언트이벤트)
+        "sap-icon://developer-settings": "screwdriver-wrench", // 서버이벤트
+        "sap-icon://syntax": "code",                        // 클라이언트 이벤트
+        "sap-icon://warning2": "triangle-exclamation",      // aggregation help
+        "sap-icon://inspection": "magnifying-glass",        // 상세보기(바인딩됨)
+        "sap-icon://delete": "trash",                       // 삭제
+        "sap-icon://favorite": "star",                      // 즐겨찾기/필수
+        "sap-icon://popup-window": "up-right-from-square",  // 팝업 호출형 버튼(CSS/JS Link 등)
+        "sap-icon://customize": "sliders",                  // property
+        "sap-icon://border": "square",                      // event
+        "sap-icon://complete": "check",                     // event(wait off)
+        "sap-icon://color-fill": "diamond",                 // aggregation 0:1
+        "sap-icon://dimension": "diamond"                   // aggregation 0:N
     };
-    function _glyph(sIcon, sFallback) {
-        if (!sIcon) { return sFallback || ""; }
-        return _ICON_GLYPH[sIcon] || (sFallback || "•");
+    // sap-icon → FontAwesome <i> 마크업. 못 찾으면 sFaFallback(기본 circle).
+    function _iconHtml(sIcon, sFaFallback) {
+        var sFa = (sIcon && _ICON_FA[sIcon]) || sFaFallback || "circle";
+        return '<i class="fa-solid fa-' + sFa + '"></i>';
     }
 
     // 클립보드 복사 (원본 attrCopyText — UI5 무관 단순 동작 대체)
@@ -3090,15 +3278,40 @@
         });
         TBR.appendChild(FLT);
 
-        //⋯ (구 _oPresetList: UI Attribute Personalization — AlwaysOverflow) [가드]
+        //⋯ 오버플로 메뉴 (구 _oPresetList: priority "AlwaysOverflow" — 항상 ⋯ 안에 들어가는 버튼).
+        //   원본(uiAttributeArea.js:564) 은 OverflowToolbarButton 이 ⋯ 메뉴 항목으로 표시되고,
+        //   클릭 시 attrPresetPopup(별도 Electron 창, sap 무관) 을 연다. → ⋯ 버튼을 공통 드롭다운
+        //   메뉴(oAPP.ws10html.openMenuAt, .u4a-menu)로 만들고 그 안에 "UI Attribute Personalization
+        //   List"(652, icon user-settings→FA user-gear) 항목을 둔다.
         var PRE = document.createElement("button");
         PRE.type = "button";
         PRE.id = "ws20AttrPresetBtn";
         PRE.className = "u4aWs20AttrTbBtn";
         PRE.title = _wsMsg("652", "UI Attribute Personalization List");
+        PRE.setAttribute("aria-haspopup", "true");
         PRE.innerHTML = '<i class="fa-solid fa-ellipsis"></i>';
         PRE.addEventListener("click", function () {
-            console.warn("[W4+ 예정] UI Attribute Personalization(preset) 팝업 미변환");
+            var aItems = [{
+                key: "ATTR_PRESET",
+                icon: "user-gear",   // 원본 sap-icon://user-settings 대응
+                text: _wsMsg("652", "UI Attribute Personalization List")
+            }];
+            // 항목 선택 → 원본 _oPresetList.press: attrPresetPopup(별도 Electron 창) 오픈.
+            function lf_select() {
+                try {
+                    var sPath = parent.PATH.join(oAPP.oDesign.pathInfo.designRootPath, "attrPresetPopup", "index.js");
+                    parent.require(sPath)(parent.REMOTE, oAPP);
+                } catch (e) {
+                    console.error("[HTML5][WS20] UI Attribute Personalization List 오픈 실패:", e);
+                }
+            }
+            var fnOpen = oAPP.ws10html && oAPP.ws10html.openMenuAt;
+            if (typeof fnOpen === "function") {
+                fnOpen(PRE, aItems, lf_select, "right");
+            } else {
+                // 공통 메뉴 헬퍼 미연결(이론상 없음) → 직접 오픈 폴백.
+                lf_select();
+            }
         });
         TBR.appendChild(PRE);
 
@@ -3116,14 +3329,9 @@
 
         oWrap.appendChild(TBR);
 
-        /* ── (e) "Properties" 섹션 바 (W1 의 #ws20AttrSectionBar 위치 계승) ── */
-        var SEC = document.createElement("div");
-        SEC.id = "ws20AttrSectionBar";
-        SEC.className = "u4aWs20AttrSectionBar";
-        SEC.textContent = "Properties";
-        oWrap.appendChild(SEC);
-
-        /* ── (f) 속성 행 스크롤 영역 ── */
+        /* ── (e) 속성 행 스크롤 영역 ──
+         *   (구 정적 "Properties" 섹션 바는 제거 — 원본처럼 그룹 헤더(Properties/Events/
+         *    Aggregations, sticky)만으로 구분. 섹션 바는 그룹 헤더와 "Properties" 중복이었음) */
         var ROWS = document.createElement("div");
         ROWS.id = "ws20AttrRows";
         ROWS.className = "u4aWs20AttrRows";
@@ -3359,8 +3567,14 @@
                 ((sAttr.btn_type === "Attention") ? " attention" : "");
             BTN.disabled = !bEnabled;
 
-            var sGly = _glyph(sAttr.btn_icon, "⧉");
-            BTN.textContent = (sGly ? sGly + " " : "") + (sAttr.btn_text || sAttr.UIATT || "");
+            BTN.innerHTML = _iconHtml(sAttr.btn_icon, "up-right-from-square");
+            var sBtnTxt = sAttr.btn_text || sAttr.UIATT || "";
+            if (sBtnTxt) {
+                var SP = document.createElement("span");
+                SP.textContent = sBtnTxt;
+                SP.style.marginLeft = "4px";
+                BTN.appendChild(SP);
+            }
             BTN.title = sAttr.UIATT || "";
 
             BTN.addEventListener("click", function () {
@@ -3393,7 +3607,7 @@
         var BTN = document.createElement("button");
         BTN.type = "button";
         BTN.className = "u4aWs20AttrIcBtn";
-        BTN.textContent = _glyph(sSrc, "•");
+        BTN.innerHTML = _iconHtml(sSrc, "circle");
         BTN.title = sAttr["icon" + iNo + "_ttip"] || "";
 
         var sColor = sAttr["icon" + iNo + "_color"];
@@ -3425,15 +3639,24 @@
 
         var sFilt = (oAPP.attr.oModel && oAPP.attr.oModel.oData && oAPP.attr.oModel.oData.sAttrFilt) || { press: false };
 
-        if (aAttr.length === 0) {
+        // 빈 상태 메시지 헬퍼 — 구 sap 테이블 noData 대체.
+        //   텍스트는 서버 메시지 클래스 단일 출처: ZMSG_WS_COMMON_001 번호 312
+        //   ("데이터를 찾을 수 없습니다." / fnMimePopupOpen 에서도 쓰는 코드). 하드코딩 아님.
+        function _attrEmpty() {
             var EMPTY = document.createElement("div");
             EMPTY.className = "u4aWs20AttrEmpty";
-            //데이터 없음(미선택/LIB 미로딩) — 빈 영역 유지.
+            EMPTY.textContent = _wsMsg("312");
             ROWS.appendChild(EMPTY);
+        }
+
+        //데이터 자체가 없을 때(미선택/LIB 미로딩) — "데이터 없음" 표시.
+        if (aAttr.length === 0) {
+            _attrEmpty();
             return;
         }
 
         var sPrevUIATY = null;
+        var iRendered = 0;
 
         for (var i = 0, l = aAttr.length; i < l; i++) {
 
@@ -3469,7 +3692,7 @@
             if (sAttr.icon0_visb === true) {
                 var REQ = document.createElement("span");
                 REQ.className = "u4aWs20AttrReqIcon";
-                REQ.textContent = _glyph(sAttr.icon0_src, "★");
+                REQ.innerHTML = _iconHtml(sAttr.icon0_src, "star");
                 if (sAttr.icon0_color) { REQ.style.color = sAttr.icon0_color; }
                 LBL.appendChild(REQ);
             }
@@ -3496,7 +3719,14 @@
             ROW.appendChild(_buildIconCell(sAttr, 2));
 
             ROWS.appendChild(ROW);
+            iRendered++;
 
+        }
+
+        // 필터(Show Changed Items) 적용 후 표시할 행이 0개일 때 — 빈 영역 대신 "데이터 없음" 안내.
+        //   (변경된 항목 없음 = 일반 테이블 "데이터 없음" 과 동일 UX. 312 재사용)
+        if (iRendered === 0) {
+            _attrEmpty();
         }
 
     }; // end of oAPP.fn.fnRenderWs20AttrRows
