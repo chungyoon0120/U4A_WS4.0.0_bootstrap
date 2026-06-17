@@ -545,10 +545,12 @@
             return;
         }
 
-        let oIllustMsg = sap.ui.getCore().byId("u4aWsIllustedMsg");
-
-        if (oIllustMsg) {
-            oIllustMsg.setDescription(sMsg);
+        // [HTML5] 구 sap.ui.getCore().byId("u4aWsIllustedMsg").setDescription(sMsg)
+        //   → 네이티브 진행 다이얼로그(.u4aWsIllustDesc) 설명 갱신(카운트다운).
+        var oDlg = document.getElementById("u4aWsIllustedMsgDialog");
+        var oDescEl = oDlg ? oDlg.querySelector(".u4aWsIllustDesc") : null;
+        if (oDescEl) {
+            oDescEl.textContent = sMsg;
         }
 
     }; // end of oAPP.fn.fnIpcMain_browser_interconnection_03

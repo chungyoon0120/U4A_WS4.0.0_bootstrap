@@ -892,6 +892,9 @@
         oDlg.addEventListener("cancel", function (e) { e.preventDefault(); lf_close(); }); // ESC
 
         _enableDrag(oDlg, oDlg.querySelector(".u4aWs20InsHead"));
+        // 헤더 더블클릭 → 화면 중앙 복귀 / 우하단 grip → 크기조절 (공통 U4AUI, SAPUI5 동일 UX)
+        if (window.U4AUI && U4AUI.makeDialogRecenter) { U4AUI.makeDialogRecenter(oDlg, oDlg.querySelector(".u4aWs20InsHead")); }
+        if (window.U4AUI && U4AUI.makeDialogResizable) { U4AUI.makeDialogResizable(oDlg, { minW: 420, minH: 320 }); }
 
         document.body.appendChild(oDlg);
         try { oDlg.showModal(); } catch (e) { }

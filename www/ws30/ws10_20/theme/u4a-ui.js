@@ -341,16 +341,39 @@
      *    opt.menuItem(el){fn}   숨겨진 항목 → {iconHtml,text,onClick} (기본: i/span/title 파싱 + el.click())
      * @returns {{reflow:Function, destroy:Function}}
      */
+    /**
+     * 버튼 라벨 추출 — 자식 `<span>` 텍스트 우선, 없으면(아이콘 전용 버튼)
+     *   title → data-tip → aria-label 순 폴백.
+     *   ★ 중요: initTooltip._promote 가 hover 시 `title` 을 `data-tip`/`aria-label` 로 옮기고
+     *     title 을 제거한다. 따라서 title 만 보면 "한 번이라도 hover 된" 아이콘 버튼은 라벨이 빈다
+     *     (오버플로 ⋯ 메뉴에서 이름이 사라지던 버그). data-tip/aria-label 폴백이 필수.
+     * @param {HTMLElement} el
+     * @param {boolean} [bStripShortcut] 끝의 " (단축키)" 제거 여부
+     */
+    function btnLabel(el, bStripShortcut) {
+        const oSpan = el.querySelector("span");
+        let s = (oSpan && oSpan.textContent.trim())
+            ? oSpan.textContent
+            : (el.title || el.getAttribute("data-tip") || el.getAttribute("aria-label") || "");
+        if (bStripShortcut) { s = s.replace(/\s*\([^)]*\)\s*$/, ""); }
+        return s;
+    }
+
     function attachOverflow(oBar, opt) {
         opt = opt || {};
         const fnIsSep = opt.isSep || function (el) { return el.classList.contains("u4a-tx-sep"); };
+        // isSkip: 측정·숨김에서 완전히 제외할 요소(예: flex-grow 스페이서). 우측정렬 툴바에서
+        //   스페이서를 폭 계산에 넣으면(=flex-grow 라 항상 가득 참) 항상 오버플로로 판정되는 함정 방지.
+        const fnIsSkip = opt.isSkip || function () { return false; };
 
-        // ⋯ 오버플로 버튼 (항상 우측 끝)
+        // ⋯ 오버플로 버튼. 좌측정렬 툴바는 marginLeft:auto 로 맨 우측에 둔다.
+        //   우측정렬(스페이서가 이미 우측으로 미는) 툴바는 noOvfAutoMargin:true → 보이는 버튼 클러스터
+        //   끝에 자연스럽게 붙는다(auto-margin 이 스페이서와 free space 를 나눠 ⋯ 가 떨어지는 문제 방지).
         const oOvf = _el("button", opt.btnClass || "u4a-tx-btn u4a-tx-overflow");
         oOvf.type = "button";
         oOvf.title = opt.title || "More";
         oOvf.innerHTML = opt.btnHtml || _fa("ellipsis");
-        oOvf.style.marginLeft = "auto";
+        if (!opt.noOvfAutoMargin) { oOvf.style.marginLeft = "auto"; }
         oOvf.hidden = true;
         oBar.appendChild(oOvf);
 
@@ -375,10 +398,7 @@
 
         function _defMenuItem(el) {
             const oI = el.querySelector("i");
-            const oSpan = el.querySelector("span");
-            let sText = (oSpan && oSpan.textContent.trim()) ? oSpan.textContent
-                : (el.title || "").replace(/\s*\([^)]*\)\s*$/, ""); // title 폴백 시 끝의 (단축키) 제거
-            return { iconHtml: oI ? oI.outerHTML : "", text: sText, onClick: function () { el.click(); } };
+            return { iconHtml: oI ? oI.outerHTML : "", text: btnLabel(el, true), onClick: function () { el.click(); } };
         }
         const fnMenuItem = opt.menuItem || _defMenuItem;
 
@@ -420,13 +440,16 @@
             if (!oBar.isConnected) { return; }
             _closeMenu();
             const aAll = _items();
-            aAll.forEach(function (el) { el.hidden = false; }); // 측정 위해 오버플로 숨김 해제
+            aAll.forEach(function (el) { if (!fnIsSkip(el)) { el.hidden = false; } }); // 측정 위해 오버플로 숨김 해제(스페이서 제외)
             oOvf.hidden = false;
-            // 모드 가시(style.display!=="none") 항목만 대상
-            const aVis = aAll.filter(function (el) { return el.style.display !== "none"; });
+            // 모드 가시(style.display!=="none") 항목만 대상 + skip(스페이서) 제외
+            const aVis = aAll.filter(function (el) { return !fnIsSkip(el) && el.style.display !== "none"; });
             const cs = getComputedStyle(oBar);
             const gap = parseFloat(cs.columnGap || cs.gap) || 0;
-            const avail = oBar.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+            let avail = oBar.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+            // 우측정렬(skip 스페이서) 모드: 스페이서 주변 gap 만큼 보수적으로 차감(폭 측정에서 스페이서를
+            //   뺐으므로 실제 행 gap 1개가 누락 — 1~몇 px 차이로 버튼이 살짝 잘리는 것 방지).
+            if (opt.isSkip) { avail -= gap; }
             const ovfW = oOvf.offsetWidth;
             const aW = aVis.map(function (el) { return el.offsetWidth; });
             const total = aW.reduce(function (a, b) { return a + b; }, 0) + gap * Math.max(0, aVis.length - 1);
@@ -551,12 +574,77 @@
         window.addEventListener("blur", _hide);
     }
 
+    /**
+     * 다이얼로그 헤더 더블클릭 → 화면 중앙 복귀. (SAPUI5 Dialog 의 헤더 더블클릭 리센터 UX 공통화)
+     * 드래그가 박아둔 인라인 위치(position/margin/left/top)를 비워 네이티브 <dialog> 의
+     * 기본 중앙정렬로 되돌린다. 헤더 내 버튼(닫기 X 등) 더블클릭은 제외.
+     * @param {HTMLDialogElement} oDlg   대상 다이얼로그
+     * @param {HTMLElement} oHandle      헤더(더블클릭 대상). 보통 .u4a-dialog__header
+     */
+    function makeDialogRecenter(oDlg, oHandle) {
+        if (!oDlg || !oHandle) { return function () {}; }
+        const _recenter = function (e) {
+            if (e && e.target && e.target.closest("button")) { return; } // 헤더 내 버튼 더블클릭 제외
+            oDlg.style.left = "";
+            oDlg.style.top = "";
+            oDlg.style.margin = "";
+            oDlg.style.position = "";
+        };
+        oHandle.addEventListener("dblclick", _recenter);
+        return _recenter; // 프로그램에서 강제 리센터 호출용
+    }
+
+    /**
+     * 다이얼로그 크기 조절 — 우하단 grip(.u4a-dialog__resize) 으로 width/height 드래그.
+     * grip 은 시각 인디케이터(대각선 그립)라 사용자가 리사이즈 가능함을 안다(shell.css).
+     * grip 은 푸터(있으면) 우하단 패딩 영역에 둬 닫기 버튼과 겹치지 않게 한다.
+     * @param {HTMLDialogElement} oDlg
+     * @param {object} [opt]  opt.minW(기본 320) opt.minH(기본 220)
+     */
+    function makeDialogResizable(oDlg, opt) {
+        if (!oDlg || oDlg.querySelector(".u4a-dialog__resize")) { return; }
+        opt = opt || {};
+        const minW = opt.minW || 320, minH = opt.minH || 220;
+        const oHost = oDlg.querySelector(".u4a-dialog__footer") || oDlg;
+        if (oHost !== oDlg) { oHost.style.position = "relative"; }
+        const grip = document.createElement("div");
+        grip.className = "u4a-dialog__resize";
+        grip.setAttribute("aria-hidden", "true");
+        grip.title = "Resize";
+        oHost.appendChild(grip);
+
+        let on = false, sx = 0, sy = 0, sw = 0, sh = 0;
+        function mv(e) {
+            if (!on) { return; }
+            const w = Math.min(Math.max(minW, sw + (e.clientX - sx)), window.innerWidth - 16);
+            const h = Math.min(Math.max(minH, sh + (e.clientY - sy)), window.innerHeight - 16);
+            oDlg.style.width = w + "px";
+            oDlg.style.height = h + "px";
+        }
+        function up() { on = false; document.removeEventListener("mousemove", mv, true); document.removeEventListener("mouseup", up, true); }
+        grip.addEventListener("mousedown", function (e) {
+            if (e.button !== 0) { return; }
+            on = true;
+            const r = oDlg.getBoundingClientRect();
+            sx = e.clientX; sy = e.clientY; sw = r.width; sh = r.height;
+            // 좌상단을 고정하고 우하단만 늘리도록 현재 위치 박제(드래그와 동일 방식).
+            oDlg.style.margin = "0"; oDlg.style.position = "fixed";
+            oDlg.style.left = r.left + "px"; oDlg.style.top = r.top + "px";
+            e.preventDefault(); e.stopPropagation();
+            document.addEventListener("mousemove", mv, true);
+            document.addEventListener("mouseup", up, true);
+        });
+    }
+
     const U4AUI = {
         el: _el,
         createSelect: createSelect,
         attachSuggest: attachSuggest,
         attachClear: attachClear,
         attachOverflow: attachOverflow,
+        btnLabel: btnLabel,
+        makeDialogRecenter: makeDialogRecenter,
+        makeDialogResizable: makeDialogResizable,
         initTooltip: initTooltip
     };
 

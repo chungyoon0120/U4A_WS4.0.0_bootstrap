@@ -435,7 +435,7 @@
     background: #0a0d14;
 }
 
-/* ── 이미지 래퍼 ── */
+/* ── 이미지 래퍼(우측 곰) ── */
 .u4a-ws-bg-image {
     position: absolute;
     top: 0;
@@ -446,7 +446,6 @@
     z-index: 1;
     overflow: hidden;
 }
-
 .u4a-ws-bg-image img {
     position: absolute;
     top: 0;

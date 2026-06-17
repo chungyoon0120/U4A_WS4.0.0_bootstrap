@@ -38,6 +38,13 @@
         return '<i class="' + (bBrand ? "fa-brands" : "fa-solid") + ' fa-' + sName + '"></i>';
     }
 
+    // HTML escape (innerHTML 에 메시지 텍스트 삽입 시 안전) — 모듈 공용.
+    function _esc(s) {
+        return String(s == null ? "" : s)
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+    }
+
     /************************************************************************
      * WS20 윈도우 메뉴 데이터 (구 fnGetWindowMenuListWS20 / fnGetWindowMenuWS20 미러)
      *   sap-icon → FontAwesome 매핑. ws10_html.js 의 공유 buildMenubar 가 소비.
@@ -331,7 +338,8 @@
             // Syntax Check (원본 syntaxCheckBtn: icon validate, B72 + Ctrl+F2)
             { id: "syntaxCheckBtn", fa: "check-double", text: "", tooltip: _msg("B72") + " (Ctrl+F2)", ev: "ev_pressSyntaxCheckBtn" },
             // Activate (원본 activateBtn: icon activate, B73 + Ctrl+F3)
-            { id: "activateBtn", fa: "bolt", text: "", tooltip: _msg("B73") + " (Ctrl+F3)", ev: "ev_pressActivateBtn" },
+            //   아이콘=마법사(wand-magic-sparkles) — 사용자 요청(액티브 버튼을 마법사 아이콘으로).
+            { id: "activateBtn", fa: "wand-magic-sparkles", text: "", tooltip: _msg("B73") + " (Ctrl+F3)", ev: "ev_pressActivateBtn" },
             // Save (원본 saveBtn: icon save, A64 + Ctrl+S)
             { id: "saveBtn", fa: "floppy-disk", text: "", tooltip: _msg("A64") + " (Ctrl+S)", ev: "ev_pressSaveBtn" },
             { sep: true, sepId: "ws20ActionSep" },
@@ -367,10 +375,9 @@
                     // split 버튼(App 실행)이 오버플로로 접힐 때: 본체(기본 동작)를 실행하도록 위임.
                     menuItem: function (el) {
                         var oI = el.querySelector("i");
-                        var oSpan = el.querySelector("span");
-                        var sText = (oSpan && oSpan.textContent.trim())
-                            ? oSpan.textContent
-                            : (el.title || "").replace(/\s*\([^)]*\)\s*$/, "");
+                        // 라벨: span 텍스트 우선, 없으면 title→data-tip→aria-label 폴백(hover 후 title
+                        //   이 _promote 로 제거돼 라벨이 비던 버그 방지 — 공용 btnLabel).
+                        var sText = window.U4AUI.btnLabel(el, true);
                         var bSplit = el.classList.contains("u4a-split");
                         return {
                             iconHtml: oI ? oI.outerHTML : "",
@@ -697,8 +704,6 @@
         LEFT.style.minWidth = "96px";  // 하드 플로어(창 강제축소 시 이 이하론 안 줄어 사라지지 않게)
         LEFT.dataset.dragMin = "260";  // 스플릿바 드래그 시 적정 최소폭(창 축소와 분리)
 
-        var BAR1 = _buildResizer("left");
-
         // 중: 미리보기 (구 designPreview, 나머지)
         var CENTER = _buildPanel("ws20DesignPreview", "u4aWsDesignPreview", "미리보기 — W2 예정");
         CENTER.style.flex = "1 1 auto"; // 가변
@@ -707,30 +712,267 @@
         // 미리보기 패널 헤더 줄 (Preview / ⟳ / 줌 슬라이더 / OFF / ?) — 정적, W2 예정
         CENTER.insertBefore(_buildPrevHeader(), CENTER.firstChild);
 
-        var BAR2 = _buildResizer("right");
-
         // 우: 속성 (구 designAttr, 30%)
         var RIGHT = _buildPanel("ws20DesignAttr", "u4aWsDesignAttr", "속성 — W4 예정");
         RIGHT.style.flex = "0 1 30%";  // 0 1 = 창 좁아지면 같이 줄어듦(이 패널이 안 숨게)
         RIGHT.style.minWidth = "96px"; // 하드 플로어(좌측 트리와 동일)
         RIGHT.dataset.dragMin = "260"; // 스플릿바 드래그 최소폭 — 좌측 트리(260)와 통일
 
-        // (구 "Properties" 섹션 바 제거 — 실제 속성 패널은 _buildAttrSkeleton 이 채우고,
-        //  그룹 구분은 그룹 헤더(Properties/Events/Aggregations)가 담당. 정적 섹션 바는 중복이었음)
-
-        SPLIT.appendChild(LEFT);
-        SPLIT.appendChild(BAR1);
-        SPLIT.appendChild(CENTER);
-        SPLIT.appendChild(BAR2);
-        SPLIT.appendChild(RIGHT);
-
-        // 드래그 리사이즈 연결
-        _bindResizer(BAR1, LEFT, SPLIT, "left");
-        _bindResizer(BAR2, RIGHT, SPLIT, "right");
+        // 패널 맵 보관(레이아웃 변경 시 재배치용) + 저장된 순서대로 배치/리사이저 바인딩.
+        //   (구 setDesignLayout / sap.ui.layout.Splitter content 순서 = P13N "designLayout")
+        SPLIT.__ws20Panels = { designTree: LEFT, designPreview: CENTER, designAttr: RIGHT };
+        _ws20ArrangeSplit(SPLIT, _ws20SavedLayoutOrder());
 
         return SPLIT;
 
     } // end of _buildWs20Split
+
+    /************************************************************************
+     * WS20 3분할 레이아웃 — 패널 정의 / 저장 순서 / 배치 (구 callDesignLayoutChangePopup + setDesignLayout)
+     ************************************************************************/
+    //  T_LAYOUT 동등 정의(원본 callDesignLayoutChangePopup.js default). icon=FA(원본 sap-icon 대응).
+    var WS20_LAYOUT_DEF = [
+        { SID: "designTree",    cls: "u4aWsDesignTree",    msg: "A65", fa: "list-ul" },   // Design Tree (text-align-right)
+        { SID: "designPreview", cls: "u4aWsDesignPreview", msg: "A67", fa: "image" },     // Preview (header)
+        { SID: "designAttr",    cls: "u4aWsDesignAttr",    msg: "A66", fa: "sliders" }    // Attribute (customize)
+    ];
+
+    function _ws20DefaultOrder() { return WS20_LAYOUT_DEF.map(function (d) { return d.SID; }); }
+
+    // 저장된 레이아웃 순서(SID 배열). P13N "designLayout"(POSIT 정렬). 유효하지 않으면 default.
+    function _ws20SavedLayoutOrder() {
+        try {
+            var aL = parent.getP13nData && parent.getP13nData("designLayout");
+            if (Array.isArray(aL) && aL.length === WS20_LAYOUT_DEF.length) {
+                var aSorted = aL.slice().sort(function (x, y) { return (x.POSIT || 0) - (y.POSIT || 0); });
+                var aSid = aSorted.map(function (o) { return o.SID; });
+                // 3개 SID 가 정확히 일치할 때만 채택(데이터 오염 방어)
+                if (WS20_LAYOUT_DEF.every(function (d) { return aSid.indexOf(d.SID) !== -1; })) { return aSid; }
+            }
+        } catch (e) { }
+        return _ws20DefaultOrder();
+    }
+
+    // SPLIT 컨테이너에 패널을 aOrder(SID 배열) 순서대로 재배치 + 리사이저 새로 바인딩.
+    //   리사이저는 항상 "패널 사이"에 위치하며, 인접한 '고정' 패널(트리/속성)의 폭을 조절한다
+    //   (미리보기=flex:1 가변 이라 슬랙을 흡수). 패널 순서가 어떻든 동작.
+    function _ws20ArrangeSplit(SPLIT, aOrder) {
+        var oPanels = SPLIT.__ws20Panels;
+        if (!oPanels) { return; }
+
+        // 현재 DOM 패널 순서가 이미 aOrder 와 같으면 재배치 생략 — 불필요한 미리보기 iframe
+        //   re-parent(=재로드) 방지. (setDesignLayout 가 setUIAreaEditable 마다 호출되므로 중요)
+        var aCur = [];
+        Array.prototype.forEach.call(SPLIT.children, function (el) {
+            if (el.classList && el.classList.contains("u4aWsDesignTree")) { aCur.push("designTree"); }
+            else if (el.classList && el.classList.contains("u4aWsDesignPreview")) { aCur.push("designPreview"); }
+            else if (el.classList && el.classList.contains("u4aWsDesignAttr")) { aCur.push("designAttr"); }
+        });
+        if (aCur.length === aOrder.length && aCur.every(function (s, i) { return s === aOrder[i]; })) { return; }
+
+        // 컨테이너 비우기(패널 노드는 oPanels 가 참조 보유 → 유실 없음) — 기존 리사이저는 폐기(리스너째).
+        while (SPLIT.firstChild) { SPLIT.removeChild(SPLIT.firstChild); }
+
+        var aBars = [];
+        aOrder.forEach(function (sSid, i) {
+            var oP = oPanels[sSid];
+            if (!oP) { return; }
+            if (i > 0) {
+                var oBar = _buildResizer(i === 1 ? "left" : "right");
+                SPLIT.appendChild(oBar);
+                aBars.push(oBar);
+            }
+            SPLIT.appendChild(oP);
+        });
+
+        // 리사이저 바인딩.
+        //   · 기본 순서[tree,preview,attr]: 기존 give-way 바인딩 보존(사용자가 좋아한 거동 —
+        //       슬랙을 가운데(preview)가 먼저 흡수, 닿으면 반대편 패널이 양보).
+        //   · 그 외(재정렬) 순서: 인접-쌍 모델(_bindResizerSimple) — 바 양옆 패널만 조절,
+        //       preview(flex:1)는 항상 가변 유지. (give-way 는 preview=가운데 전제라 재정렬 시 깨짐)
+        var bDefault = aOrder.length === 3 &&
+            aOrder[0] === "designTree" && aOrder[1] === "designPreview" && aOrder[2] === "designAttr";
+        aBars.forEach(function (oBar) {
+            if (bDefault) {
+                var oLeft = oBar.previousElementSibling;
+                if (oLeft && oLeft.classList.contains("u4aWsDesignTree")) { _bindResizer(oBar, oLeft, SPLIT, "left"); }
+                else { _bindResizer(oBar, oBar.nextElementSibling, SPLIT, "right"); } // preview|attr → attr
+            } else {
+                _bindResizerSimple(oBar, SPLIT);
+            }
+        });
+    }
+
+    /************************************************************************
+     * 인접-쌍 리사이저 (레이아웃 재정렬 시 — 패널 순서 무관 / 예측 가능).
+     *   바 양옆 패널만 조절: 한쪽이 미리보기(flex:1)면 반대쪽 '고정' 패널만 px 로 조절(미리보기 흡수),
+     *   둘 다 고정이면 인접쌍(좌 +delta / 우 −delta, 합 보존). min-width 클램프.
+     ************************************************************************/
+    function _bindResizerSimple(oBar, oSplit) {
+        var bDrag = false, iStartX = 0, oA = null, oB = null, iAStart = 0, iBStart = 0;
+        function _minW(el) {
+            var v = parseFloat((el.dataset && el.dataset.dragMin) || getComputedStyle(el).minWidth);
+            return isNaN(v) ? 96 : v;
+        }
+        function _isPrev(el) { return el && el.classList.contains("u4aWsDesignPreview"); }
+
+        function lf_move(e) {
+            if (!bDrag) { return; }
+            var d = e.clientX - iStartX;
+            if (_isPrev(oA)) {                       // 좌가 미리보기 → 우 고정 패널만(드래그 우→ 우 패널 축소)
+                var ib = iBStart - d, mb = _minW(oB);
+                if (ib < mb) { ib = mb; }
+                oB.style.flex = "0 1 " + ib + "px";
+            } else if (_isPrev(oB)) {                // 우가 미리보기 → 좌 고정 패널만(드래그 우→ 좌 패널 확대)
+                var ia = iAStart + d, ma = _minW(oA);
+                if (ia < ma) { ia = ma; }
+                oA.style.flex = "0 1 " + ia + "px";
+            } else {                                  // 둘 다 고정 → 인접쌍(합 보존)
+                var a = iAStart + d, b = iBStart - d, am = _minW(oA), bm = _minW(oB);
+                if (a < am) { b -= (am - a); a = am; }
+                if (b < bm) { a -= (bm - b); b = bm; }
+                if (a < am) { a = am; }
+                oA.style.flex = "0 1 " + a + "px";
+                oB.style.flex = "0 1 " + b + "px";
+            }
+        }
+        function lf_up() {
+            bDrag = false;
+            document.body.classList.remove("u4aWs20ResizingCursor");
+            document.removeEventListener("mousemove", lf_move);
+            document.removeEventListener("mouseup", lf_up);
+        }
+        oBar.addEventListener("mousedown", function (e) {
+            oA = oBar.previousElementSibling;
+            oB = oBar.nextElementSibling;
+            if (!oA || !oB) { return; }
+            bDrag = true;
+            iStartX = e.clientX;
+            iAStart = oA.getBoundingClientRect().width;
+            iBStart = oB.getBoundingClientRect().width;
+            document.body.classList.add("u4aWs20ResizingCursor");
+            document.addEventListener("mousemove", lf_move);
+            document.addEventListener("mouseup", lf_up);
+            e.preventDefault();
+        });
+    }
+
+    // [PUBLIC] 구 setDesignLayout — 저장된 순서로 현재 SPLIT 재배치(셸 렌더/모드전환 시 호출).
+    oAPP.fn.setDesignLayout = function () {
+        try {
+            var oSplit = document.getElementById("ws20DesignSplit");
+            if (oSplit && oSplit.__ws20Panels) { _ws20ArrangeSplit(oSplit, _ws20SavedLayoutOrder()); }
+        } catch (e) { console.warn("[HTML5][WS20] setDesignLayout error:", e && e.message); }
+    };
+
+    /************************************************************************
+     * [PUBLIC] 레이아웃 변경 팝업 (구 callDesignLayoutChangePopup — Split Position Change)
+     *   원본: sap.m.Dialog + GenericTile D&D 재정렬 + Default/Save/Close.
+     *   3카드(Design Tree/Preview/Attribute)를 드래그로 재정렬 → 저장 시 P13N "designLayout"
+     *   저장 + 패널 순서 적용 + 미리보기 재로드.  (native <dialog class="u4a-dialog">)
+     ************************************************************************/
+    oAPP.fn.fnWs20OpenLayoutPopup = function () {
+
+        // 기존 열림 제거
+        var oOld = document.getElementById("ws20LayoutDlg");
+        if (oOld) { try { oOld.close(); } catch (e) { } oOld.remove(); }
+
+        var aWork = _ws20SavedLayoutOrder();   // 작업용 순서(SID 배열) — 저장 전까지 임시
+        function _def(sid) { return WS20_LAYOUT_DEF.filter(function (d) { return d.SID === sid; })[0]; }
+
+        var DLG = document.createElement("dialog");
+        DLG.id = "ws20LayoutDlg";
+        DLG.className = "u4a-dialog u4aWs20LayoutDlg";
+
+        DLG.innerHTML =
+            '<div class="u4a-dialog__header">' +
+            '  <i class="fa-solid fa-table-columns"></i><span>' + _esc(_msg("A62")) + '</span>' +   // Change Layout
+            '  <button type="button" class="u4a-btn-icon u4aWs20LayoutX" data-act="close" title="' + _esc(_msg("A39")) + '"><i class="fa-solid fa-xmark"></i></button>' +
+            '</div>' +
+            '<div class="u4a-dialog__body"><div class="u4aWs20LayoutCards"></div></div>' +
+            '<div class="u4a-dialog__footer">' +
+            '  <button type="button" class="u4a-btn" data-act="default"><i class="fa-solid fa-rotate-left"></i> ' + _esc(_msg("A63")) + '</button>' +   // Default
+            '  <button type="button" class="u4a-btn u4a-btn--emphasized" data-act="save"><i class="fa-solid fa-floppy-disk"></i> ' + _esc(_msg("A64")) + '</button>' +   // Save
+            '  <button type="button" class="u4a-btn u4a-btn--negative" data-act="close"><i class="fa-solid fa-xmark"></i> ' + _esc(_msg("A39")) + '</button>' +   // Close
+            '</div>';
+
+        var CARDS = DLG.querySelector(".u4aWs20LayoutCards");
+        var _dragSid = null;
+
+        function _renderCards() {
+            CARDS.innerHTML = "";
+            aWork.forEach(function (sid) {
+                var d = _def(sid);
+                if (!d) { return; }
+                var C = document.createElement("div");
+                C.className = "u4aWs20LayoutCard";
+                C.setAttribute("draggable", "true");
+                C.setAttribute("data-sid", sid);
+                C.innerHTML = '<i class="fa-solid fa-grip-vertical u4aWs20LayoutGrip"></i>' +
+                    '<i class="fa-solid fa-' + d.fa + ' u4aWs20LayoutIco"></i>' +
+                    '<span class="u4aWs20LayoutTxt">' + _esc(_msg(d.msg)) + '</span>';
+                C.addEventListener("dragstart", function (e) { _dragSid = sid; C.classList.add("is-dragging"); try { e.dataTransfer.effectAllowed = "move"; } catch (x) { } });
+                C.addEventListener("dragend", function () { _dragSid = null; C.classList.remove("is-dragging"); });
+                C.addEventListener("dragover", function (e) { e.preventDefault(); C.classList.add("is-over"); });
+                C.addEventListener("dragleave", function () { C.classList.remove("is-over"); });
+                C.addEventListener("drop", function (e) {
+                    e.preventDefault(); C.classList.remove("is-over");
+                    if (!_dragSid || _dragSid === sid) { return; }
+                    // _dragSid 를 sid 위치로 이동(순서 재배열)
+                    var iFrom = aWork.indexOf(_dragSid), iTo = aWork.indexOf(sid);
+                    if (iFrom === -1 || iTo === -1) { return; }
+                    aWork.splice(iFrom, 1);
+                    aWork.splice(iTo, 0, _dragSid);
+                    _renderCards();
+                });
+                CARDS.appendChild(C);
+            });
+        }
+        _renderCards();
+
+        function _close() { try { DLG.close(); } catch (e) { } DLG.remove(); }
+
+        function _save() {
+            // 저장 확인 (구 010 "Do you want to save it?") — 중앙 showMessage(HTML5) 사용.
+            var sMsg = "";
+            try { sMsg = oAPP.common.fnGetMsgClsText("/U4A/MSG_WS", "010"); } catch (e) { }
+            function _doSave() {
+                // P13N 저장 (구 setP13nData("designLayout", T_LAYOUT)) — POSIT/SID/UIID 포함.
+                var aT_LAYOUT = aWork.map(function (sid, i) {
+                    var d = _def(sid) || {};
+                    return { SID: sid, POSIT: i, NAME: _msg(d.msg || ""), UIID: "o" + sid.charAt(0).toUpperCase() + sid.slice(1) };
+                });
+                try { if (parent.setP13nData) { parent.setP13nData("designLayout", aT_LAYOUT); } }
+                catch (e) { console.error("[HTML5][WS20] designLayout 저장 실패:", e); }
+                // 실제 패널 순서 적용 + 미리보기 재로드(구 loadPreviewFrame(true)).
+                try { oAPP.fn.setDesignLayout(); } catch (e) { console.error("[HTML5][WS20] 레이아웃 적용 실패:", e); }
+                try { if (typeof oAPP.fn.fnWs20LoadPreview === "function") { oAPP.fn.fnWs20LoadPreview(); } } catch (e) { }
+                _close();
+            }
+            try {
+                if (parent.showMessage) {
+                    parent.showMessage(null, 30, "I", sMsg, function (sAct) { if (sAct === "YES") { _doSave(); } });
+                    return;
+                }
+            } catch (e) { }
+            _doSave(); // showMessage 미가용 시 바로 저장
+        }
+
+        DLG.addEventListener("click", function (e) {
+            var oBtn = e.target.closest("[data-act]");
+            if (!oBtn) { return; }
+            var sAct = oBtn.getAttribute("data-act");
+            if (sAct === "close") { _close(); }
+            else if (sAct === "default") { aWork = _ws20DefaultOrder(); _renderCards(); }
+            else if (sAct === "save") { _save(); }
+        });
+        DLG.addEventListener("cancel", function (e) { e.preventDefault(); _close(); }); // ESC
+
+        document.body.appendChild(DLG);
+        if (typeof DLG.showModal === "function") { try { DLG.showModal(); } catch (e) { DLG.setAttribute("open", ""); } }
+        else { DLG.setAttribute("open", ""); }
+
+    }; // end of fnWs20OpenLayoutPopup
 
     /************************************************************************
      * 좌측 사이드 레일 (구 sap.tnt.ToolPage sideContent = sap.tnt.SideNavigation)
@@ -771,11 +1013,10 @@
         var TOP = document.createElement("div");
         TOP.className = "u4aWs20SideTop";
         TOP.appendChild(_ws20SideItem("table-columns", _msg("B31"), function () {
-            // 구 fnWs20SideMENUITEM_10 → callDesignLayoutChangePopupOpener (디자인영역 UI5 — 미포팅)
-            if (typeof oAPP.fn.fnWs20SideMENUITEM_10 === "function") {
-                try { oAPP.fn.fnWs20SideMENUITEM_10(); return; } catch (e) { }
-            }
-            console.warn("[HTML5][WS20] Split Position Change(레이아웃 변경 팝업) 미포팅 — 추후 디자인영역 변환 시 연결");
+            // 구 fnWs20SideMENUITEM_10 → callDesignLayoutChangePopupOpener.
+            //   HTML5 레이아웃 변경 팝업(3분할 순서 재정렬) 직접 호출.
+            try { oAPP.fn.fnWs20OpenLayoutPopup(); }
+            catch (e) { console.error("[HTML5][WS20] Split Position Change(레이아웃 변경 팝업) 오류:", e); }
         }));
         SIDE.appendChild(TOP);
 
@@ -987,8 +1228,9 @@
         //   oCenter = 가변 가운데 패널, oOpp = 드래그 대상의 반대편 패널
         function lf_center() { return oSplit.querySelector(".u4aWsDesignPreview"); }
         function lf_opp() {
-            // sSide "left" → oPanel=좌(트리), 반대=우(속성) / "right" → 반대=좌(트리)
-            return oSplit.querySelector(sSide === "left" ? ".u4aWsDesignAttr" : ".u4aWsDesignTree");
+            // 반대편 = oPanel 이 아닌 "고정" 패널(트리/속성 중 oPanel 아닌 쪽). 패널 순서와 무관
+            //   (레이아웃 변경으로 패널 순서가 바뀌어도 동작 — 구 side 기반 → oPanel 기반).
+            return oSplit.querySelector(oPanel.classList.contains("u4aWsDesignTree") ? ".u4aWsDesignAttr" : ".u4aWsDesignTree");
         }
         // 리사이저 바 2개의 폭 합 (콘텐츠 가용폭 계산용)
         function lf_barsW() {

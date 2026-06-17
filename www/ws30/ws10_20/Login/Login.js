@@ -2128,11 +2128,9 @@ var oAPP = (function () {
      ************************************************************************/
     async function _onViewReady() {
 
-        // ★ 런치 초기화(브라우저 체크 / 메시지 / 언어·버전·권한 등 서버통신) 동안 busy 표시.
-        //   이 구간엔 로그인 폼도 아직 hidden 이라 빈 화면만 보였다(스피너 누락).
-        //   해제: 정상 경로는 아래 _fnFadeInContent 직전 setDomBusy(""), SSO 분기는
-        //   ev_login 이 busy 를 그대로 이어받아 처리한다.
-        parent.setDomBusy("X");
+        // 참고: 런치 busy(스피너)는 호스트가 iframe 을 붙이기 "전"에 이미 켠다
+        //   (control.js _loadLoginPage). 여기서 켜면 iframe 로드+JS 실행 후라야 켜져
+        //   로딩 초반(빈 화면) 구간을 못 덮는다. 해제만 아래 _fnFadeInContent 직전에서 한다.
 
         // Default Browser check
         await oAPP.fn.fnCheckIstalledBrowser();

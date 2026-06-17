@@ -69,6 +69,21 @@
     /************************************************************************
      * 메시지 텍스트 안전 조회 (모델 미초기화/미로그인 상황에서도 폴백)
      ************************************************************************/
+    // /U4A/MSG_WS 메시지(검색 안내 등 — 174 not found / 270 match count / 294 placeholder). p1=치환.
+    function _msgWs2(sNum, p1) {
+        try {
+            var s = APPCOMMON.fnGetMsgClsText("/U4A/MSG_WS", sNum, p1 == null ? "" : String(p1));
+            if (s != null && s !== "" && s.indexOf("|") === -1) { return s; }
+        } catch (e) { }
+        return sNum;
+    }
+
+    // HTML escape (innerHTML 안전).
+    function _esc(s) {
+        return String(s == null ? "" : s)
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
     // 언어 = 서버 메시지 클래스 단일 출처(원본 동일). 내부 영문 폴백 보관 금지(2026-06-16 지시).
     function _msg(sNum) {
         // 메시지 번호 없으면 조회 생략 — fnGetMsgClsText 가 "못 찾음" 으로 "클래스경로|번호"
@@ -79,6 +94,16 @@
             if (s != null && s !== "" && s.indexOf("|") === -1) { return s; }
         } catch (e) { }
         return sNum;
+    }
+
+    // ZMSG_WS_COMMON_001 메시지(312 = No data Found 등) — 속성 패널 _wsMsg 와 동일 소스.
+    //   빈 트리/빈 속성 모두 같은 "데이터 없음" 텍스트를 같은 클래스에서 가져와 UX 통일.
+    function _wsMsg(sNr) {
+        try {
+            var s = parent.WSUTIL.getWsMsgClsTxt("", "ZMSG_WS_COMMON_001", sNr);
+            if (s && s.indexOf("|") === -1) { return s; }
+        } catch (e) { }
+        return sNr;
     }
 
     /************************************************************************
@@ -265,14 +290,16 @@
 
         var aBtns = [
             // B21 Expand — 선택 라인 하위 모두 펼침 (원본 expandTreeItem)
+            //   아이콘=원본 sap-icon://expand-group(이중 쉐브론 ↓) 모양으로 복원(fa-angles-down).
             {
-                icon: "sap-icon://expand-group", gly: "⊞",
+                icon: "sap-icon://expand-group", fa: "angles-down",
                 tooltip: _msg("B21", "Expand"),
                 press: function () { oAPP.fn.fnWs20TreeExpandSelected(); }
             },
             // B22 Collapse — 선택 라인 접힘 (원본 oLTree1.collapse(selectedIndex))
+            //   아이콘=원본 sap-icon://collapse-group(이중 쉐브론 ↑) 모양으로 복원(fa-angles-up).
             {
-                icon: "sap-icon://collapse-group", gly: "⊟",
+                icon: "sap-icon://collapse-group", fa: "angles-up",
                 tooltip: _msg("B22", "Collapse"),
                 press: function () { oAPP.fn.fnWs20TreeCollapseSelected(); }
             },
@@ -296,8 +323,10 @@
                 press: function () { _safeCall("designTreeMultiDeleteItem", []); }
             },
             // B24 UI Template Wizard (원본 designCallWizardPopup) [가드]
+            //   아이콘=원본 sap-icon://responsive(모니터/디바이스) 모양으로 복원(fa-display).
+            //   변환 때 wand-magic-sparkles(🪄)로 바뀌었던 것을 원복 — 마법사 wand 는 Activate 버튼으로 이동.
             {
-                icon: "sap-icon://responsive", gly: "🪄", accept: true, editOnly: true,
+                icon: "sap-icon://responsive", fa: "display", accept: true, editOnly: true,
                 tooltip: _msg("B24", "UI Template Wizard"),
                 press: function () { _safeCall("designCallWizardPopup", []); }
             },
@@ -369,12 +398,13 @@
                     btnClass: "u4a-btn-icon",
                     btnHtml: '<span class="u4aWs20TreeTbIcon"><i class="fa-solid fa-ellipsis"></i></span>',
                     isSep: function (el) { return el.classList.contains("u4aWs20TreeTbSep"); },
-                    // ⋯ 메뉴 항목 라벨은 "항상 버튼 title" 에서 가져온다(아이콘 버튼이라 기본 추출이
-                    //   span 텍스트를 먼저 보는데, 트리 버튼 span 은 아이콘만 있어 라벨이 비던 문제 방지).
+                    // ⋯ 메뉴 항목 라벨은 공용 btnLabel 로 추출(아이콘 버튼이라 span 은 비어 title 폴백).
+                    //   ★ title 만 보면 hover 후 _promote 가 title→data-tip 으로 옮겨 라벨이 비던 버그가
+                    //     있어, btnLabel 이 title→data-tip→aria-label 순으로 폴백한다.
                     //   비활성(disabled) 버튼은 메뉴에서도 흐리게 + 클릭 무시.
                     menuItem: function (el) {
                         var oI = el.querySelector("i");
-                        var sText = (el.title || "").replace(/\s*\([^)]*\)\s*$/, "");
+                        var sText = window.U4AUI.btnLabel(el, true);
                         var bDis = el.disabled === true || el.classList.contains("is-disabled");
                         return {
                             iconHtml: oI ? oI.outerHTML : "",
@@ -620,17 +650,35 @@
      * 펼침/접힘 토글 (UI 전용 사이드맵만 변경 → 재렌더).
      *   비-UI 로직(모델 노드/펼침 계산)은 변경하지 않음.
      ************************************************************************/
+    // 노드 + 모든 자손의 펼침 상태를 접힘(false)으로 세팅 — 원본 UI5 collapse(자손 포함) 동작.
+    //   (노드를 접으면 그 아래에서 펼쳐뒀던 자식들도 같이 접혀, 재펼침 시 접힌 채로 보이게)
+    function _collapseSubtree(oNode, oMap) {
+        if (!oNode) { return; }
+        if (oNode.OBJID != null) { oMap[oNode.OBJID] = false; }
+        if (Array.isArray(oNode.zTREE)) {
+            for (var i = 0; i < oNode.zTREE.length; i++) { _collapseSubtree(oNode.zTREE[i], oMap); }
+        }
+    }
+
     function _toggleNode(oNode, oRow) {
         var sKey = oNode && oNode.OBJID;
         if (sKey == null) { return; }
         var bExpand = !_isExpanded(oNode);
-        _expandedMap()[sKey] = bExpand;
-        // in-place 토글 — 전체 재렌더 대신 행 aria-expanded + 자식 ul 표시/숨김.
-        //   (공통 CSS 가 aria-expanded 로 셰브론을 부드럽게 회전 → ServerList 와 동일)
+        var oMap = _expandedMap();
+
+        if (!bExpand) {
+            // 접을 때: 자손 펼침 상태까지 모두 접고(원본 동작) 재렌더 → 재펼침 시 자식들이 접힌 채 보임.
+            _collapseSubtree(oNode, oMap);   // oNode 포함 자손 전부 false
+            oAPP.fn.fnRenderDesignTree();
+            return;
+        }
+
+        // 펼칠 때: in-place(자식 ul 표시) — 자식들은 자기 map 상태(접힘)대로 이미 렌더돼 있음.
+        oMap[sKey] = true;
         if (oRow && oRow.parentNode) {
-            oRow.setAttribute("aria-expanded", bExpand ? "true" : "false");
+            oRow.setAttribute("aria-expanded", "true");
             var oChildUl = oRow.parentNode.querySelector(":scope > ul.u4aWs20TreeChildren");
-            if (oChildUl) { oChildUl.hidden = !bExpand; return; }
+            if (oChildUl) { oChildUl.hidden = false; return; }
         }
         oAPP.fn.fnRenderDesignTree(); // 폴백(행/자식 ul 못 찾으면 전체 재렌더)
     }
@@ -685,7 +733,8 @@
         if (!aRoot || aRoot.length === 0) {
             var EMPTY = document.createElement("div");
             EMPTY.className = "u4aWs20TreeEmpty";
-            EMPTY.textContent = _msg("", "") || "";
+            // 속성 패널과 동일한 "데이터 없음"(312) 안내 — 로그인/앱오픈 전 빈 패널이 텅 비어 보이지 않게.
+            EMPTY.textContent = _wsMsg("312");
             oScrollArea.appendChild(EMPTY);
             return;
         }
@@ -811,7 +860,10 @@
         var sSel = _getSelectedObjid();
 
         if (sSel) {
-            oMap[sSel] = false;
+            // 선택 노드 + 그 자손까지 모두 접음(원본 동작 — 재펼침 시 자식들 접힌 채).
+            var oSel = _findNode(_getTreeRoot(), sSel);
+            if (oSel) { _collapseSubtree(oSel, oMap); }
+            else { oMap[sSel] = false; }
         } else {
             // 전체 접힘
             function lf_collapseAll(aNodes) {
@@ -859,6 +911,207 @@
         oAPP.fn.fnRenderDesignTree();
 
     }; // end of fnWs20TreeExpandToLevel
+
+    /************************************************************************
+     * [PUBLIC] Find UI — 디자인 트리 OBJID 검색 (구 callDesignTreeFindPopup)
+     * ----------------------------------------------------------------------
+     *  원본(design/js/callDesignTreeFindPopup.js): ResponsivePopover + 입력/검색(✓)/
+     *  equal 체크/Direction Up 체크/↑↓ 버튼. zTREE 재귀로 OBJID 매치 수집 →
+     *  매치 전체 highlight=Indication03, 현재=Indication07 + 해당 라인 스크롤 + 전체 펼침.
+     *  position 순환(±1), 키워드/equal 변경 시 재수집. 비-UI 로직 1:1 이식.
+     ************************************************************************/
+    var _findState = { T_TREE: [], position: 0, keyword: "", equal: false };
+
+    // 트리 전체 highlight 초기화(구 lf_designRemoveFilterUI).
+    function _findClearHighlights() {
+        function rec(oN) {
+            if (!oN) { return; }
+            oN.highlight = "None";
+            if (Array.isArray(oN.zTREE)) { for (var i = 0; i < oN.zTREE.length; i++) { rec(oN.zTREE[i]); } }
+        }
+        var aRoot = _getTreeRoot();
+        if (aRoot && aRoot[0]) { rec(aRoot[0]); }
+    }
+
+    // 검색조건 매치 수집(구 lf_designCollectFindOBJID) — 수집 중 모든 노드 highlight 초기화.
+    function _findCollect() {
+        _findState.T_TREE = [];
+        var sKey = (_findState.keyword || "").toUpperCase();
+        function rec(oN) {
+            if (!oN) { return; }
+            oN.highlight = "None";
+            var sId = oN.OBJID || "";
+            var bHit = _findState.equal ? (sId === sKey) : (sId.indexOf(sKey) !== -1);
+            if (bHit) { _findState.T_TREE.push(oN); }
+            if (Array.isArray(oN.zTREE)) { for (var i = 0; i < oN.zTREE.length; i++) { rec(oN.zTREE[i]); } }
+        }
+        var aRoot = _getTreeRoot();
+        if (aRoot && aRoot[0]) { rec(aRoot[0]); }
+    }
+
+    // 전체 펼침(구 expandToLevel(huge)).
+    function _findExpandAll() {
+        var oMap = _expandedMap();
+        function rec(aNodes) {
+            if (!Array.isArray(aNodes)) { return; }
+            for (var i = 0; i < aNodes.length; i++) { var n = aNodes[i]; if (n && _hasChild(n)) { oMap[n.OBJID] = true; rec(n.zTREE); } }
+        }
+        rec(_getTreeRoot());
+    }
+
+    function _findScrollTo(sObjid) {
+        try {
+            var oRow = document.querySelector('#ws20DesignTree [data-objid="' + (sObjid || "").replace(/"/g, '\\"') + '"]');
+            if (oRow && oRow.scrollIntoView) { oRow.scrollIntoView({ block: "center" }); }
+        } catch (e) { }
+    }
+
+    // 검색 실행(구 lf_designFindOBJID). POS:+1/-1, bRefresh:키워드/equal 변경 시 재수집.
+    function _findExec(POS, bRefresh, oMsgEl) {
+        if (oMsgEl) { oMsgEl.textContent = ""; oMsgEl.className = "u4aWs20FindMsg"; }
+
+        // 키워드 없으면 마킹 초기화 후 종료.
+        if (_findState.keyword === "") { _findClearHighlights(); oAPP.fn.fnRenderDesignTree(); return; }
+
+        if (bRefresh) { _findCollect(); }
+
+        // 매치 없음 → 경고(174 Target object can not be found).
+        if (_findState.T_TREE.length === 0) {
+            if (oMsgEl) { oMsgEl.textContent = _msgWs2("174"); oMsgEl.className = "u4aWs20FindMsg is-warn"; }
+            oAPP.fn.fnRenderDesignTree();
+            return;
+        }
+
+        // position 이동(순환). 신규검색(refresh)이면 position 유지(0부터).
+        if (!bRefresh) {
+            _findState.position += POS;
+            if (_findState.position >= _findState.T_TREE.length) { _findState.position = 0; }
+            else if (_findState.position < 0) { _findState.position = _findState.T_TREE.length - 1; }
+        }
+
+        // 매치 전체 = Indication03, 현재 = Indication07.
+        for (var i = 0; i < _findState.T_TREE.length; i++) { _findState.T_TREE[i].highlight = "Indication03"; }
+        _findState.T_TREE[_findState.position].highlight = "Indication07";
+
+        // 신규검색이면 전체 펼침.
+        if (bRefresh) { _findExpandAll(); }
+
+        // 결과 메시지는 매 Enter(신규검색·이동) 마다 표시한다 + 현재위치(현재/전체) 로 순환 피드백.
+        //   (구: bRefresh 일 때만 표시 → 같은 키워드로 2번째 Enter 부터 메시지가 비워진 채 사라지던 문제)
+        if (oMsgEl) {
+            // 270 Match results : &1
+            oMsgEl.textContent = _msgWs2("270", _findState.T_TREE.length) +
+                " (" + (_findState.position + 1) + "/" + _findState.T_TREE.length + ")";
+            oMsgEl.className = "u4aWs20FindMsg is-ok";
+        }
+
+        oAPP.fn.fnRenderDesignTree();
+        _findScrollTo(_findState.T_TREE[_findState.position].OBJID);
+    }
+
+    // 검색조건 변경 여부(구 lf_isRefresh) — 키워드/equal 바뀌면 재수집 대상.
+    function _findIsRefresh(sVal, bEqual) {
+        if (_findState.keyword !== sVal || _findState.equal !== bEqual) {
+            _findState.keyword = sVal;
+            _findState.equal = bEqual;
+            _findState.T_TREE = [];
+            _findState.position = 0;
+            return true;
+        }
+        return false;
+    }
+
+    // Find UI — 트리 패널 상단 "도킹 find-bar"(구: body 부유 popover → 트리에 소속).
+    //   트리거(🔍)·검색대상(트리)과 같은 패널에 바가 붙어 연결이 분명하고, 트리/하이라이트를
+    //   가리지 않는다(툴바와 스크롤영역 사이에 끼워 트리 내용은 그만큼 아래로 밀림).
+    oAPP.fn.callDesignTreeFindPopup = function () {
+
+        // 토글: 이미 열려 있으면 닫는다(하이라이트 정리 + esc 리스너 해제).
+        var oOld = document.getElementById("ws20FindPop");
+        if (oOld) {
+            try { document.removeEventListener("keydown", oOld.__onEsc, true); } catch (e) { }
+            _findClearHighlights();
+            try { oAPP.fn.fnRenderDesignTree(); } catch (e) { }
+            try { oOld.remove(); } catch (e) { }
+            return;
+        }
+
+        // 도킹 대상: 트리 wrap(툴바+스크롤) 의 스크롤영역 "앞"에 바를 끼운다.
+        var oTreePane = document.getElementById("ws20DesignTree");
+        var oWrap = oTreePane && oTreePane.querySelector(".u4aWs20TreeWrap");
+        var oScroll = oWrap && oWrap.querySelector(".u4aWs20TreeScroll");
+        if (!oWrap || !oScroll) { return; } // 트리 미렌더 시 무시
+
+        _findState = { T_TREE: [], position: 0, keyword: "", equal: false };
+
+        var POP = document.createElement("div");
+        POP.id = "ws20FindPop";
+        POP.className = "u4aWs20FindPop u4aWs20FindBar";
+        POP.innerHTML =
+            '<div class="u4aWs20FindHd"><i class="fa-solid fa-magnifying-glass"></i><span>' + _esc(_msg("A70")) + '</span>' +
+            '<button type="button" class="u4a-btn-icon u4aWs20FindX" title="' + _esc(_msg("A39")) + '"><i class="fa-solid fa-xmark"></i></button></div>' +
+            '<div class="u4aWs20FindBody">' +
+            '  <div class="u4aWs20FindRow1">' +
+            // 입력 — 전 화면 공통 컴포넌트(.u4a-field + .u4a-field__clear). clear(X)는 값 있을 때만 노출.
+            '    <div class="u4a-field u4aWs20FindField" data-trail="1">' +
+            '      <input type="text" class="u4a-input u4a-field__input u4aWs20FindInp" placeholder="' + _esc(_msgWs2("294")) + '">' +
+            '      <button type="button" class="u4a-field__clear" title="Clear" aria-label="Clear" tabindex="-1"><i class="fa-solid fa-xmark"></i></button>' +
+            '    </div>' +
+            '    <button type="button" class="u4a-btn u4a-btn--emphasized u4aWs20FindGo" title="' + _esc(_msg("A68")) + '"><i class="fa-solid fa-check"></i></button>' +
+            '  </div>' +
+            '  <div class="u4aWs20FindRow2">' +
+            '    <label class="u4aWs20FindChk"><input type="checkbox" class="u4aWs20FindEqual"> ' + _esc(_msg("A71")) + '</label>' +
+            '    <label class="u4aWs20FindChk"><input type="checkbox" class="u4aWs20FindDir"> ' + _esc(_msg("A72")) + '</label>' +
+            '    <span class="u4aWs20FindSpacer"></span>' +
+            '    <button type="button" class="u4a-btn-icon u4aWs20FindUp" title="' + _esc(_msg("A55")) + '"><i class="fa-solid fa-arrow-up"></i></button>' +
+            '    <button type="button" class="u4a-btn-icon u4aWs20FindDown" title="' + _esc(_msg("A56")) + '"><i class="fa-solid fa-arrow-down"></i></button>' +
+            '  </div>' +
+            '  <div class="u4aWs20FindMsg"></div>' +
+            '</div>';
+
+        var oInp = POP.querySelector(".u4aWs20FindInp");
+        var oEqual = POP.querySelector(".u4aWs20FindEqual");
+        var oDir = POP.querySelector(".u4aWs20FindDir");
+        var oMsgEl = POP.querySelector(".u4aWs20FindMsg");
+        function _dirPos() { return oDir.checked ? -1 : 1; }
+        function _refresh() { return _findIsRefresh(oInp.value, oEqual.checked); }
+
+        // 닫기 — 도킹 바라서 외부 클릭으로는 안 닫는다(find-bar UX). X 버튼·Esc·🔍 토글로만 닫힘.
+        function _close() {
+            try { document.removeEventListener("keydown", _onEsc, true); } catch (e) { }
+            _findClearHighlights();
+            try { oAPP.fn.fnRenderDesignTree(); } catch (e) { }
+            try { POP.remove(); } catch (e) { }
+        }
+        function _onEsc(ev) { if (ev.key === "Escape") { ev.stopPropagation(); _close(); } }
+        POP.__onEsc = _onEsc; // 토글 닫기에서 리스너 해제용
+
+        POP.querySelector(".u4aWs20FindX").addEventListener("click", _close);
+        POP.querySelector(".u4aWs20FindGo").addEventListener("click", function () { _findExec(_dirPos(), _refresh(), oMsgEl); oInp.focus(); });
+        POP.querySelector(".u4aWs20FindUp").addEventListener("click", function () { _findExec(-1, _refresh(), oMsgEl); oInp.focus(); });
+        POP.querySelector(".u4aWs20FindDown").addEventListener("click", function () { _findExec(1, _refresh(), oMsgEl); oInp.focus(); });
+        oEqual.addEventListener("change", function () { oInp.focus(); });
+        oDir.addEventListener("change", function () { oInp.focus(); });
+        oInp.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") { e.preventDefault(); _findExec(_dirPos(), _refresh(), oMsgEl); }
+            else if (e.key === "ArrowUp") { e.preventDefault(); if (oInp.value !== "") { _findExec(-1, _refresh(), oMsgEl); } }
+            else if (e.key === "ArrowDown") { e.preventDefault(); if (oInp.value !== "") { _findExec(1, _refresh(), oMsgEl); } }
+        });
+
+        // clear(X) — 전 화면 공통 컴포넌트(U4AUI.attachClear). 비우면 검색 하이라이트도 해제(키워드 "").
+        var oFindClr = POP.querySelector(".u4aWs20FindField .u4a-field__clear");
+        if (window.U4AUI && typeof window.U4AUI.attachClear === "function") {
+            window.U4AUI.attachClear(oInp, oFindClr, function () { _findExec(_dirPos(), _refresh(), oMsgEl); });
+        }
+
+        // 트리 툴바와 스크롤영역 "사이"에 끼운다(도킹). 트리 재렌더(_findExec)는 스크롤영역만
+        //   비우므로(.u4aWs20TreeScroll), 그 앞에 둔 이 바는 검색 중에도 그대로 유지된다.
+        oWrap.insertBefore(POP, oScroll);
+
+        document.addEventListener("keydown", _onEsc, true);
+        try { oInp.focus(); } catch (e) { }
+
+    }; // end of callDesignTreeFindPopup
 
     /************************************************************************
      * /zTREE 에서 OBJID 로 노드 검색 (UI 전용 헬퍼).

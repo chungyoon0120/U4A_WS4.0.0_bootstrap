@@ -120,6 +120,12 @@ export async function getControl() {
             oContr.ui.WINDOW_TITLE.textContent = "U4A Workspace - Login";
         }
 
+        // ★ busy 스피너는 iframe 을 붙이기 "전"에 켠다 — iframe 로드 + Login.js 초기화
+        //   (브라우저체크/메시지/언어·버전·권한 서버통신)가 끝날 때까지 로딩 초반의 빈 화면을
+        //   덮는다. 해제는 로그인 준비 완료 시 Login.js(_onViewReady 끝 _fnFadeInContent 직전)
+        //   가 parent.setDomBusy("") 로 한다. (busy 는 최상위 문서 #u4aWsBusyIndicator)
+        if (typeof setDomBusy === "function") { setDomBusy("X"); }
+
         let oIframe = document.createElement("iframe");
         oIframe.src = sLoginPath;
         oIframe.style.cssText = "border:none;width:100%;height:100%;display:block;";

@@ -82,7 +82,15 @@
   --ws20-sel-bg: var(--selected-bg);     /* 선택 행 배경 */
   --ws20-hover-bg: var(--hover-bg);
   --ws20-grip: var(--text-muted);        /* 리사이저 점 그립 / 점선 밑줄 */
+  /* 변경된 속성 행 틴트용 액센트 RGB 채널 — color-mix 미지원(Chromium93)이라 액센트에서 알파를
+     못 뽑으므로 테마별 concrete RGB 를 직접 정의해 rgba(var(--ws20-changed-rgb), α) 로 쓴다.
+     기본값 = 화이트 테마 액센트(--c-blue #0070f2). 다크/레드/퍼플/그린은 아래에서 오버라이드. */
+  --ws20-changed-rgb: 0, 112, 242;
 }
+[data-theme="horizon_dark"]   .u4aWs20MainPage { --ws20-changed-rgb: 28, 147, 242; }  /* #1c93f2 */
+[data-theme="horizon_red"]    .u4aWs20MainPage { --ws20-changed-rgb: 232, 0, 13; }    /* #e8000d */
+[data-theme="horizon_purple"] .u4aWs20MainPage { --ws20-changed-rgb: 120, 88, 255; }  /* #7858ff */
+[data-theme="horizon_green"]  .u4aWs20MainPage { --ws20-changed-rgb: 24, 137, 24; }   /* #188918 */
 
 /* WS20 메인 페이지 래퍼 (구 sap.m.Page "WS20_MAIN") */
 .u4aWs20MainPage {
@@ -246,7 +254,7 @@
   display: inline-flex; align-items: center;
   height: 18px; padding: 0 8px;
   border: 1px solid var(--ws20-grip); border-radius: 9px;
-  color: var(--ws20-text-sub); font-size: 11px; line-height: 1;
+  color: var(--ws20-text-sub); font-size: 13px; line-height: 1;
   user-select: none; cursor: default;
 }
 
@@ -361,12 +369,46 @@
   height: 40px;
   font-size: 13px;
   border-left: 2px solid transparent;   /* highlight(상태) 컬러바 자리 */
+  /* Find UI 하이라이트 색 — 테마 accent(파랑/녹색/보라/빨강)와 항상 구분되도록 "테마 무관 고정 amber"
+     (검색=노랑/금 관습색). 어떤 테마든 선택=accent / find=amber 로 색이 갈린다. */
+  --ws20-find-hl: #e3a008;
   /* 들여쓰기 = 6px + 깊이 × step(기본 16px). 좁을 땐 컨테이너 쿼리가 step 을 줄여 이름 공간 확보 */
   padding-left: calc(0.375rem + var(--ws20-depth, 0) * var(--ws20-indent-step, 1rem));
 }
 .u4aWs20TreeRow.hl-Indication02 { border-left-color: var(--state-error); }   /* Error/Negative */
 .u4aWs20TreeRow.hl-Indication04 { border-left-color: var(--state-warning); } /* Warning */
 .u4aWs20TreeRow.hl-Indication08 { border-left-color: var(--state-info); }    /* Information */
+/* Find UI 검색 결과 — 네모 박스 링 대신 amber "글로우 + 좌→우 그라데이션 워시"로 화사하게.
+   ★ 선택 행(aria-selected)은 테마 accent(파랑/녹색/보라/빨강). find 는 테마 무관 고정 amber(--ws20-find-hl)
+     라 어떤 테마에서도 색이 갈린다(선택=테마색 / find=amber). 레이아웃 시프트 없음(box-shadow/background only).
+   Indication03=매치 전체(가는 바 + 옅은 페이드 워시), Indication07=현재 라인(굵은 바 + 안쪽 글로우 +
+     착지 시 1회 플래시 펄스 + 볼드)으로 "지금 여기"가 화사하게 살아난다. */
+.u4a-tree__row.u4aWs20TreeRow.hl-Indication03 {
+  box-shadow: inset 3px 0 0 0 color-mix(in srgb, var(--ws20-find-hl) 82%, transparent);
+  background: linear-gradient(90deg,
+              color-mix(in srgb, var(--ws20-find-hl) 20%, transparent),
+              transparent 72%);
+}
+.u4a-tree__row.u4aWs20TreeRow.hl-Indication07 {
+  box-shadow: inset 4px 0 0 0 var(--ws20-find-hl),
+              inset 0 0 16px -5px var(--ws20-find-hl);   /* 안쪽 amber 글로우(박스 X) */
+  background: linear-gradient(90deg,
+              color-mix(in srgb, var(--ws20-find-hl) 42%, transparent),
+              color-mix(in srgb, var(--ws20-find-hl) 12%, transparent) 55%,
+              transparent);
+  font-weight: 600;
+  animation: ws20FindPulse 0.95s ease-out 1;   /* 매치에 "착지"할 때마다 1회 화사하게 점멸 */
+}
+/* 착지 펄스: 전체 행 amber 플래시(inset 큰 spread) → 안쪽 글로우로 가라앉음. */
+@keyframes ws20FindPulse {
+  0%   { box-shadow: inset 4px 0 0 0 var(--ws20-find-hl),
+                     inset 0 0 0 9999px color-mix(in srgb, var(--ws20-find-hl) 42%, transparent); }
+  100% { box-shadow: inset 4px 0 0 0 var(--ws20-find-hl),
+                     inset 0 0 16px -5px var(--ws20-find-hl); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .u4a-tree__row.u4aWs20TreeRow.hl-Indication07 { animation: none; }
+}
 
 /* 토글 클릭 영역 확대 — 행 높이만큼 세로로 꽉, 가로 28px (펼치기 쉽게) */
 .u4aWs20TreeRow .u4a-tree__toggle {
@@ -407,7 +449,7 @@
      (inline-flex 였을 때는 내부 텍스트 min-content 때문에 안 줄어들던 문제 수정) */
   display: block; flex: 1 1 auto; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  color: var(--ws20-aggr); font-size: 12px;
+  color: var(--ws20-aggr); font-size: 13px;
 }
 .u4aWs20TreeAggrIcon { font-size: 10px; color: var(--ws20-aggr); vertical-align: middle; margin-right: 3px; }
 
@@ -514,7 +556,7 @@
 .u4aWs20InsSearch { flex: 1 1 auto; min-width: 0; }
 .u4aWs20InsStep { display: flex; align-items: center; gap: 0.375rem; }
 .u4aWs20InsCnt { width: 4.5rem; text-align: center; }
-.u4aWs20InsMax { font-size: 0.75rem; color: var(--text-muted); margin-left: 0.25rem; white-space: nowrap; }
+.u4aWs20InsMax { font-size: 0.8125rem; color: var(--text-muted); margin-left: 0.25rem; white-space: nowrap; }
 .u4aWs20InsChkRow {
   display: flex; align-items: center; gap: 0.5rem;
   font-size: 0.8125rem; color: var(--text); cursor: pointer;
@@ -574,8 +616,20 @@
 .u4aWs20AttrWrap {
   display: flex; flex-direction: column;
   width: 100%; height: 100%; min-height: 0;
+  overflow: hidden;                    /* 제목(HDR) 고정 + 아래 SCROLLER 만 스크롤 */
   background: var(--ws20-panel);
   font-size: 13px; color: var(--ws20-text);
+}
+
+/* 스크롤 영역 (구 DynamicPage 본문) — 제목(HDR) 아래 전체를 한 덩어리로 스크롤.
+   INFO(UI Object ID/Description)는 스크롤로 사라지고, STICKY(셰브론+툴바)는 top:0 고정(snap header). */
+.u4aWs20AttrScroller {
+  flex: 1 1 auto; min-height: 0;
+  overflow-y: auto; overflow-x: hidden;
+}
+.u4aWs20AttrSticky {
+  position: sticky; top: 0; z-index: 3;
+  background: var(--ws20-panel);
 }
 
 /* (a) 상단 헤더 — [UI 아이콘] [UI명(흰색 굵게)] … [UILIB] */
@@ -593,7 +647,7 @@
 }
 .u4aWs20AttrHdrSpacer { flex: 1 1 auto; }
 .u4aWs20AttrHdrLib {
-  color: var(--ws20-text-sub); font-size: 12px; white-space: nowrap;
+  color: var(--ws20-text); font-size: 13px; white-space: nowrap;
   cursor: default; user-select: text;
 }
 .u4aWs20AttrHdrBtn {
@@ -613,7 +667,7 @@
 }
 .u4aWs20AttrInfoLbl {
   margin: 6px 0 2px 0;
-  color: var(--ws20-text-strong); font-weight: 600; font-size: 12px;
+  color: var(--ws20-text-strong); font-weight: 600; font-size: 13px;
 }
 .u4aWs20AttrInfoRow { display: flex; align-items: center; gap: 4px; }
 
@@ -675,39 +729,46 @@
 .u4aWs20AttrToolbar {
   flex: 0 0 auto;
   display: flex; align-items: center; gap: 4px;
+  flex-wrap: nowrap;        /* 좁아져도 줄바꿈 X — 넘치면 ⋯ 로 접는다(attachOverflow) */
+  overflow: hidden;         /* 넘치는 버튼이 패널 밖으로 새지 않게(상단 .u4a-ws10__subheader 와 동일) */
   height: 34px; min-height: 34px; padding: 0 8px;
   background: var(--surface-raised);   /* 본문 위로 한 단계 떠 보이게 */
   border-bottom: 1px solid var(--ws20-sep);
 }
 .u4aWs20AttrTbSpacer { flex: 1 1 auto; }
 .u4aWs20AttrTbBtn {
+  flex: 0 0 auto;           /* 줄어들지 않게 — 좁아지면 squish(텍스트 잘림) 대신 ⋯ 로 접힌다 */
   display: inline-flex; align-items: center; justify-content: center; gap: 4px;
   height: 24px; padding: 0 8px;
   border: 1px solid transparent; background: transparent; color: var(--ws20-btn);
-  border-radius: 4px; cursor: pointer; font-size: 12px; line-height: 1;
+  border-radius: 4px; cursor: pointer; font-size: 13px; line-height: 1;
   font-family: inherit; white-space: nowrap;
 }
+/* ★ hidden 실제 적용 — 클래스의 display:inline-flex 가 UA [hidden]{display:none} 을 덮어쓰므로
+   명시 규칙이 없으면 el.hidden=true 여도 버튼/⋯ 가 안 사라진다(⋯ 가 항상 보이던 버그의 원인).
+   상단 .u4a-tx-btn[hidden] 과 동일. */
+.u4aWs20AttrTbBtn[hidden] { display: none; }
 .u4aWs20AttrTbBtn:hover { background: var(--ws20-btn-hover); }
 .u4aWs20AttrTbBtn.accept { color: var(--success); }
 /* Show Changed Items 토글 (구 ToggleButton type:Emphasized).
    토글임이 분명하도록 2-상태로: 미적용(기본)=아웃라인(액센트 보더/글자, 투명 배경) → "클릭하면 필터",
    적용중(.pressed)=액센트 채움+흰 글자 → "필터 ON 활성". (항상 파란 채움이라 토글로 안 보이던 것 개선) */
+/* 원본(sap.m.ToggleButton type:Emphasized) 그대로 — 항상 "채워진 파란 버튼 + 흰 필터 아이콘".
+   토글 ON/OFF 구분은 아이콘(filter ↔ filter-circle-xmark)·텍스트(Show Changed ↔ Show All)·밝기로. */
 .u4aWs20AttrTbBtn.emph {
-  background: transparent; color: var(--ws20-accent); font-weight: 600;
+  background: var(--ws20-accent); color: var(--c-white); font-weight: 600;
   border-color: var(--ws20-accent);
 }
-.u4aWs20AttrTbBtn.emph i { color: var(--ws20-accent); }
-.u4aWs20AttrTbBtn.emph:hover { background: var(--ws20-hover-bg); }
-.u4aWs20AttrTbBtn.emph.pressed {
-  background: var(--ws20-accent); color: var(--c-white); border-color: var(--ws20-accent);
-}
+.u4aWs20AttrTbBtn.emph i { color: var(--c-white); }
+.u4aWs20AttrTbBtn.emph:hover { background: var(--ws20-accent); filter: brightness(1.08); }
+/* 필터 ON(.pressed) — 약간 어둡게(눌린 느낌) */
+.u4aWs20AttrTbBtn.emph.pressed { background: var(--ws20-accent); filter: brightness(0.85); }
 .u4aWs20AttrTbBtn.emph.pressed i { color: var(--c-white); }
-.u4aWs20AttrTbBtn.emph.pressed:hover { filter: brightness(1.1); }
+.u4aWs20AttrTbBtn.emph.pressed:hover { filter: brightness(0.93); }
 
-/* (f) 속성 행 스크롤 영역 */
+/* (f) 속성 행 — 스크롤은 부모 SCROLLER 가 담당(이전엔 ROWS 자체가 스크롤이었음) */
 .u4aWs20AttrRows {
-  flex: 1 1 auto; min-height: 0;
-  overflow: auto;
+  flex: 0 0 auto;
 }
 .u4aWs20AttrEmpty { padding: 16px; text-align: center; color: var(--ws20-text-sub); }
 
@@ -715,7 +776,9 @@
    — "그룹"임이 한눈에 인지되도록 강조: 좌측 액센트 바 + 굵은 강조색 텍스트 +
      상단 살짝 띄움 + 하단 액센트 구분선. 스크롤 시 sticky 로 상단 고정. */
 .u4aWs20AttrGroupHdr {
-  position: sticky; top: 0; z-index: 2;
+  /* sticky 기준이 SCROLLER 이므로, 위에 고정된 STICKY(셰브론+툴바) 높이만큼 내려 붙는다.
+     높이는 JS 가 --ws20-attr-stickyh 로 실측 주입(폴백 60px). */
+  position: sticky; top: var(--ws20-attr-stickyh, 60px); z-index: 2;
   display: flex; align-items: center; gap: 8px;
   margin-top: 6px;
   padding: 9px 12px 8px;
@@ -756,12 +819,48 @@
 .u4aWs20AttrLblTxt {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   cursor: pointer;
+  text-decoration: none;            /* 평상시 밑줄 없음 (구 .u4aAttrObjectStatus) */
+  text-underline-offset: 2px;
 }
+/* 마우스 오버 — 클릭 가능한 링크(설명 팝업)임을 밑줄+액센트색으로 명확히
+   (구 design/css/common.css .u4aAttrObjectStatus:hover 의 underline 동작과 동일).
+   밑줄만 추가하므로 글자 폭이 변하지 않아 레이아웃이 밀리지 않는다. */
+.u4aWs20AttrLblTxt:hover { text-decoration: underline; color: var(--ws20-accent); }
 .u4aWs20AttrReqIcon { font-size: 10px; flex: 0 0 auto; }
 
-/* 변경된 행 — 구 changedDataMarker 의 .changeValue (라벨 파랑 강조) */
-.u4aWs20AttrRow.changeValue .u4aWs20AttrLblTxt {
-  color: var(--ws20-accent); font-weight: 700;
+/* 변경된 행 — 구 changedDataMarker 의 .changeValue.
+   원본(ws10_20.css)의 neumorphic "움푹 들어간 입체감"을 재현:
+     파란 세로 그라데이션 + inset 그림자(어두운 위/밝은 아래) + 라운드 + 라이트블루 볼드 텍스트.
+   ★ color-mix 는 Electron14=Chromium93 에서 미지원(드롭됨) → gradient/inset box-shadow/rgba 만 사용
+     (모두 Chromium93 OK, 원본도 color-mix 안 썼음). [[no-color-mix-chromium93]] */
+.u4aWs20AttrRow.changeValue {
+  /* 틴트색은 테마 액센트의 RGB(--ws20-changed-rgb)로 — 화이트=파랑/다크=하늘/레드/퍼플/그린 자동 대응. */
+  background: linear-gradient(to bottom,
+              rgba(var(--ws20-changed-rgb), 0.24), rgba(var(--ws20-changed-rgb), 0.09));
+  /* 안쪽 그림자로 "눌려 들어간" 입체감 (위·왼쪽 어둡게, 아래·오른쪽 살짝 밝게) */
+  box-shadow: inset 4px 4px 10px rgba(0, 0, 0, 0.55),
+              inset -3px -3px 8px rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  border-bottom-color: transparent;   /* 라운드 카드처럼 보이게 하단 구분선 제거 */
+}
+/* 변경된 행 hover — 그라데이션 한 단계 진하게(들어간 느낌 유지). */
+.u4aWs20AttrRow.changeValue:hover {
+  background: linear-gradient(to bottom,
+              rgba(var(--ws20-changed-rgb), 0.32), rgba(var(--ws20-changed-rgb), 0.14));
+}
+/* 글자 — 테마 액센트 강조색(--accent-strong)으로 "변경됨" 강조. 각 테마의 accent-strong 은
+   다크=밝은톤(#5dc6ff)/라이트테마=진한톤 이라 들어간 틴트 배경 위에서 자동으로 대비가 맞는다. */
+.u4aWs20AttrRow.changeValue .u4aWs20AttrLblTxt { color: var(--accent-strong); font-weight: 700; }
+.u4aWs20AttrRow.changeValue .u4aWs20AttrInp,
+.u4aWs20AttrRow.changeValue .u4aWs20AttrSel,
+.u4aWs20AttrRow.changeValue .u4aWs20AttrCombo .u4a-combo__text { color: var(--accent-strong); font-weight: 600; }
+/* ★ 값 영역 컨트롤(입력/콤보/셀렉트)의 불투명 배경이 행 틴트를 가려 행이 끊겨 보이던 문제 해결 —
+   변경된 행에서는 컨트롤 배경을 투명화해 행 색이 값 영역까지 끊김 없이 이어지게 한다.
+   보더는 유지 → 입력 어포던스(편집 가능 표시)는 그대로. */
+.u4aWs20AttrRow.changeValue .u4aWs20AttrInp:not(:read-only):not(:disabled),
+.u4aWs20AttrRow.changeValue .u4aWs20AttrCombo:not(.is-disabled),
+.u4aWs20AttrRow.changeValue .u4aWs20AttrSel:not(:disabled) {
+  background: transparent;
 }
 
 /* 값 셀 (우) */
@@ -812,13 +911,146 @@
 .u4aWs20AttrChk { accent-color: var(--ws20-accent); cursor: pointer; margin: 0; }
 .u4aWs20AttrChk:disabled { cursor: default; }
 
+/* ── 레이아웃 변경 팝업 (Split Position Change / 구 callDesignLayoutChangePopup) ── */
+/* 공통 .u4a-dialog 의 상단 accent(파란) 띠 제거 — 이 팝업은 띠 없이 깔끔하게(드롭섀도만). */
+.u4aWs20LayoutDlg { box-shadow: var(--popover-shadow); }
+/* 제목 span 을 늘려 닫기(X) 버튼을 헤더 우측 끝으로 정렬(구 createApplicationPopup 패턴). */
+.u4aWs20LayoutDlg .u4a-dialog__header span { flex: 1 1 auto; }
+.u4aWs20LayoutX { color: var(--icon-muted); }
+.u4aWs20LayoutX:hover { color: var(--error); }
+.u4aWs20LayoutDlg .u4a-dialog__body { padding: 16px; }
+.u4aWs20LayoutCards {
+  display: flex; flex-direction: row; gap: 12px; align-items: stretch;
+}
+/* 각 영역 카드 (구 GenericTile) — 드래그로 순서 변경 */
+.u4aWs20LayoutCard {
+  flex: 1 1 0; min-width: 120px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  padding: 18px 12px;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 8px);
+  cursor: grab; user-select: none;
+  transition: border-color .12s, box-shadow .12s, transform .12s;
+}
+.u4aWs20LayoutCard:hover { border-color: var(--accent); }
+.u4aWs20LayoutCard.is-dragging { opacity: .5; cursor: grabbing; }
+.u4aWs20LayoutCard.is-over { border-color: var(--accent); border-style: dashed; box-shadow: 0 0 0 2px var(--accent) inset; }
+.u4aWs20LayoutGrip { color: var(--text-muted); font-size: .8rem; }
+.u4aWs20LayoutIco { color: var(--accent); font-size: 1.5rem; }
+.u4aWs20LayoutTxt { color: var(--text); font-size: .85rem; font-weight: 600; text-align: center; }
+
+/* ── Find UI 검색 popover (Split Position Change 위 🔍 / 구 callDesignTreeFindPopup) ── */
+.u4aWs20FindPop {
+  position: fixed; z-index: 1000;
+  width: 420px; max-width: 92vw;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: var(--popover-shadow);
+  color: var(--text); font-family: inherit;
+}
+.u4aWs20FindHd {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border-bottom: 1px solid var(--divider);
+  font-weight: 700; font-size: 13px;
+  cursor: move; user-select: none;   /* 헤더 드래그로 팝업 이동 */
+}
+.u4aWs20FindHd .u4aWs20FindX { cursor: pointer; }
+.u4aWs20FindHd > i { color: var(--icon-muted); }
+.u4aWs20FindHd span { flex: 1 1 auto; }
+.u4aWs20FindX { color: var(--icon-muted); }
+.u4aWs20FindX:hover { color: var(--error); }
+.u4aWs20FindBody { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.u4aWs20FindRow1 { display: flex; gap: 6px; align-items: center; }
+/* 입력은 공통 .u4a-field 래퍼 안(.u4a-field__input width:100%). row1 flex 사이징은 래퍼가 가진다. */
+.u4aWs20FindField { flex: 1 1 auto; min-width: 0; }
+.u4aWs20FindInp { min-width: 0; }
+.u4aWs20FindGo { flex: 0 0 auto; }
+.u4aWs20FindRow2 { display: flex; gap: 10px; align-items: center; }
+.u4aWs20FindChk { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text); cursor: pointer; white-space: nowrap; }
+.u4aWs20FindChk input { accent-color: var(--accent); cursor: pointer; }
+.u4aWs20FindSpacer { flex: 1 1 auto; }
+/* 결과 메시지 — 굵게 + 상태색을 텍스트색과 블렌딩해 어느 테마/배경에서도 또렷하게.
+   (구 --state-success(#107e3e) 단독은 다크 surface 위 대비가 낮아 잘 안 보였음.) */
+.u4aWs20FindMsg { font-size: 13px; min-height: 1em; font-weight: 600; }
+.u4aWs20FindMsg.is-warn { color: color-mix(in srgb, var(--state-warning) 70%, var(--text)); }
+.u4aWs20FindMsg.is-ok { color: color-mix(in srgb, var(--state-success) 55%, var(--text)); }
+
+/* 속성 설명글 팝업 (구 callAttrDescPopup 의 sap.m.ResponsivePopover).
+   라벨 클릭 시 앵커 위치에 뜨는 비-모달 팝오버 — Find 팝업과 톤 통일(표면/보더/그림자). */
+.u4aWs20DescPop {
+  position: fixed; z-index: 1000;
+  width: 480px; max-width: 92vw;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: var(--popover-shadow);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+/* 헤더 — breadcrumb 제목(구 Toolbar + Breadcrumbs) + 닫기(X) */
+.u4aWs20DescHd {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 8px 8px 12px; border-bottom: 1px solid var(--divider);
+}
+.u4aWs20DescCrumb {
+  flex: 1 1 auto; min-width: 0;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.u4aWs20DescCrumbLink { color: var(--accent); font-weight: 600; flex: 0 0 auto; }
+.u4aWs20DescCrumbSep { color: var(--icon-muted); flex: 0 0 auto; }
+.u4aWs20DescCrumbCur {
+  color: var(--text); font-weight: 600;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis;
+}
+.u4aWs20DescX {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px;
+  border: 1px solid transparent; background: transparent; color: var(--icon-muted);
+  border-radius: 4px; cursor: pointer; font-size: 14px; line-height: 1; font-family: inherit;
+}
+.u4aWs20DescX:hover { color: var(--error); background: var(--hover-bg); }
+/* 본문 — 원어/번역 설명 textarea (가로 배치, 하나만 있으면 꽉 참) */
+.u4aWs20DescBody { display: flex; gap: 8px; padding: 10px; }
+.u4aWs20DescArea {
+  flex: 1 1 0; min-width: 0; box-sizing: border-box;
+  min-height: 7rem; max-height: 40vh; resize: vertical;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 8px; font-size: 13px; line-height: 1.5; font-family: inherit;
+  outline: none;
+}
+.u4aWs20DescArea:focus { border-color: var(--accent); }
+
+/* Find UI — 트리 패널 상단 "도킹 바"(구 body 부유 popover → 트리에 소속).
+   .u4aWs20FindPop 의 부유 스타일(position/shadow/고정폭)을 무효화하고, 트리 wrap
+   (flex column)의 한 행(flex:0 0 auto)으로 in-flow 배치 → 스크롤영역이 나머지를 차지. */
+.u4aWs20FindBar {
+  position: static; z-index: auto;
+  flex: 0 0 auto;
+  width: auto; max-width: none;
+  border: 0; border-bottom: 1px solid var(--ws20-sep);
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--surface-raised);
+}
+.u4aWs20FindBar .u4aWs20FindHd {
+  cursor: default;            /* 도킹이라 헤더 드래그 없음 */
+  border-bottom: 0;
+  padding: 6px 8px;
+}
+.u4aWs20FindBar .u4aWs20FindBody { padding: 4px 8px 8px; gap: 6px; }
+
 /* 팝업 호출형 버튼 (구 sap.m.Button type:Attention — 노란 테두리.
    CSS Link Add / JS Link Add / Web Security Settings 등) */
 .u4aWs20AttrPopBtn {
   display: inline-flex; align-items: center; justify-content: center; gap: 4px;
   width: 100%; height: 24px; padding: 0 8px;
   border: 1px solid var(--ws20-grip); background: transparent; color: var(--ws20-text);
-  border-radius: 4px; cursor: pointer; font-size: 12px; line-height: 1;
+  border-radius: 4px; cursor: pointer; font-size: 13px; line-height: 1;
   font-family: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .u4aWs20AttrPopBtn.attention { border-color: var(--warning); color: var(--warning); }

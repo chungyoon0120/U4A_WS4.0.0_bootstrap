@@ -2442,11 +2442,20 @@
      *   (문서 8.2 1단계 "Attribute header 펼침")
      ************************************************************************/
     function _attrHeaderExpanded(bExpand) {
-        var INFO = document.getElementById("ws20AttrInfo");
-        var COL = document.getElementById("ws20AttrInfoCollapseBtn");
-        if (!INFO) { return; }
-        INFO.style.display = bExpand ? "" : "none";
-        if (COL) { COL.textContent = bExpand ? "∧" : "∨"; }
+        // 구현 변경: display 토글 → 스크롤(원본 DynamicPage 처럼 헤더가 스크롤로 접힘/펼침).
+        //   펼침 = 맨 위로 스크롤(INFO 보임), 접힘 = STICKY 가 상단에 닿도록 스크롤(INFO 가림).
+        var SCROLLER = document.getElementById("ws20AttrScroller");
+        if (!SCROLLER) { return; }
+        if (bExpand) {
+            try { SCROLLER.scrollTop = 0; } catch (e) { }
+            return;
+        }
+        var STICKY = document.getElementById("ws20AttrSticky");
+        if (!STICKY) { return; }
+        try {
+            var d = STICKY.getBoundingClientRect().top - SCROLLER.getBoundingClientRect().top;
+            SCROLLER.scrollTop = SCROLLER.scrollTop + d;
+        } catch (e) { }
     }
 
     //drop 가능 css 제거 처리. (원본 design/js/main.js 1765행 ClearDropEffect 1:1 —
@@ -2996,7 +3005,7 @@
         "sap-icon://complete": "check",                     // event(wait off)
         "sap-icon://color-fill": "diamond",                 // aggregation 0:1
         "sap-icon://dimension": "diamond",                  // aggregation 0:N
-        "sap-icon://value-help": "square-caret-down"        // F4 값도움(원본 sap.m.Input showValueHelp 기본 아이콘) — 드롭다운 셰브론과 구분되는 네모틀 표현
+        "sap-icon://value-help": "clone"                    // F4 값도움 — 원본 sap-icon://value-help(겹친 사각형) 모양에 가장 가까운 fa-clone 로 재현(사용자 피드백 2026-06-17)
     };
     // sap-icon → FontAwesome <i> 마크업. 못 찾으면 sFaFallback(기본 circle).
     function _iconHtml(sIcon, sFaFallback) {
@@ -3039,6 +3048,9 @@
 
         var oWrap = oPane.querySelector(".u4aWs20AttrWrap");
         if (oWrap) { return oWrap; }
+
+        // 속성 툴바 반응형 오버플로 컨트롤러 (필터 토글로 버튼 폭이 바뀌면 reflow).
+        var _attrTbOvf = null;
 
         oPane.innerHTML = "";
 
@@ -3093,6 +3105,20 @@
 
         oWrap.appendChild(HDR);
 
+        // ── 스크롤 영역 (구 sap.f.DynamicPage 본문) ──────────────────────────
+        //   제목(HDR)은 패널 상단 고정, 그 아래(INFO+툴바+행)를 "한 덩어리"로 스크롤한다.
+        //   스크롤을 내리면 INFO(UI Object ID/Description)는 위로 사라지고, STICKY(셰브론+툴바)가
+        //   상단(top:0)에 붙는다(원본 DynamicPage snap header). 올리면 INFO 가 다시 보인다.
+        var SCROLLER = document.createElement("div");
+        SCROLLER.id = "ws20AttrScroller";
+        SCROLLER.className = "u4aWs20AttrScroller";
+        oWrap.appendChild(SCROLLER);
+
+        // 셰브론(접기/펼치기)+툴바를 함께 묶어 스크롤 시 상단 고정(sticky)할 컨테이너.
+        var STICKY = document.createElement("div");
+        STICKY.id = "ws20AttrSticky";
+        STICKY.className = "u4aWs20AttrSticky";
+
         /* ── (b) UI Object ID / Description 입력 영역 (구 DynamicPageHeader Grid) ── */
         var INFO = document.createElement("div");
         INFO.id = "ws20AttrInfo";
@@ -3128,7 +3154,8 @@
         CPY.id = "ws20AttrObjIdCopyBtn";
         CPY.className = "u4aWs20AttrSmBtn";
         CPY.title = _msg("A04", "Copy");
-        CPY.innerHTML = '<i class="fa-solid fa-clone"></i>';
+        // 클립보드 복사 — F4 값도움(fa-clone, 겹친 사각형)과 구분되게 fa-copy(문서 복사) 사용(사용자 피드백 2026-06-17)
+        CPY.innerHTML = '<i class="fa-solid fa-copy"></i>';
         CPY.addEventListener("click", function () {
             //라이브러리명 복사 처리. (원본과 동일: 입력 필드의 값 복사)
             _copyText(INP.value);
@@ -3180,11 +3207,27 @@
         });
         INFO.appendChild(TXA);
 
-        oWrap.appendChild(INFO);
+        SCROLLER.appendChild(INFO);
 
         /* ── (c) 접기(∧)/핀(📌) 작은 버튼 줄 (구 DynamicPage 헤더 접기/핀) ── */
         var CTL = document.createElement("div");
         CTL.className = "u4aWs20AttrInfoCtl";
+
+        // 헤더(INFO) 접힘 여부 = INFO 하단이 스크롤 영역(SCROLLER) 상단 위로 가려졌는지.
+        //   (STICKY 와 INFO 는 인접해 있어 STICKY.top 기준으로 보면 펼침 상태도 접힘으로 오판됨)
+        function _attrHeaderCollapsed() {
+            try {
+                var rInfo = INFO.getBoundingClientRect();
+                var rScr = SCROLLER.getBoundingClientRect();
+                return rInfo.bottom <= rScr.top + 2;
+            } catch (e) { return false; }
+        }
+        // 셰브론 아이콘 동기화: 펼침(INFO 보임)=∧, 접힘(스크롤로 가려짐)=∨.
+        function _attrSyncChevron() {
+            COL.innerHTML = _attrHeaderCollapsed()
+                ? '<i class="fa-solid fa-chevron-down"></i>'
+                : '<i class="fa-solid fa-chevron-up"></i>';
+        }
 
         var COL = document.createElement("button");
         COL.type = "button";
@@ -3192,10 +3235,19 @@
         COL.className = "u4aWs20AttrSmBtn";
         COL.title = "Expand/Collapse Header";
         COL.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+        // 클릭 = 스크롤로 접기/펼치기(원본 DynamicPage snap 토글). 펼침이면 INFO 가리도록 아래로,
+        //   접힘이면 맨 위로(스무스). 스크롤 위치에 따라 셰브론 아이콘은 _attrSyncChevron 이 갱신.
         COL.addEventListener("click", function () {
-            var bHidden = INFO.style.display === "none";
-            INFO.style.display = bHidden ? "" : "none";
-            COL.textContent = bHidden ? "∧" : "∨";
+            // 접힘 → 맨 위로(펼침). 펼침 → STICKY 가 SCROLLER 상단에 닿도록 스크롤(INFO 가림=접힘).
+            var iTarget = 0;
+            if (!_attrHeaderCollapsed()) {
+                try {
+                    var dTop = STICKY.getBoundingClientRect().top - SCROLLER.getBoundingClientRect().top;
+                    iTarget = SCROLLER.scrollTop + dTop;
+                } catch (e) { iTarget = SCROLLER.scrollTop + 200; }
+            }
+            try { SCROLLER.scrollTo({ top: iTarget, behavior: "smooth" }); }
+            catch (e) { SCROLLER.scrollTop = iTarget; }
         });
         CTL.appendChild(COL);
 
@@ -3205,13 +3257,32 @@
         PIN.className = "u4aWs20AttrSmBtn";
         PIN.title = "Pin Header";
         PIN.innerHTML = '<i class="fa-solid fa-thumbtack"></i>';
+        // 핀 = 헤더(INFO) 고정(원본 DynamicPageHeader pinnable). 누르면 INFO 를 스크롤 영역 밖
+        //   (제목 HDR 다음 고정 영역)으로 옮겨 스크롤해도 항상 보이게, 다시 누르면 스크롤 영역으로
+        //   복귀해 스크롤로 접히게 한다. 핀 상태에선 접기 셰브론(∧/∨)은 의미 없어 숨긴다.
         PIN.addEventListener("click", function () {
-            //구 DynamicPageHeader pinnable — HTML5 에선 시각 토글만.
-            PIN.classList.toggle("pinned");
+            var bPin = !PIN.classList.contains("pinned");
+            PIN.classList.toggle("pinned", bPin);
+            try {
+                if (bPin) {
+                    oWrap.insertBefore(INFO, SCROLLER);   // 고정 영역(HDR 다음)으로 → 항상 표시
+                    COL.style.display = "none";
+                } else {
+                    SCROLLER.insertBefore(INFO, SCROLLER.firstChild); // 스크롤 영역 맨 위로 복귀
+                    COL.style.display = "";
+                    SCROLLER.scrollTop = 0;               // 펼친 상태로 되돌림
+                    _attrSyncChevron();
+                }
+            } catch (e) {
+                console.warn("[HTML5][WS20][attr] 헤더 핀 토글 오류:", e && e.message);
+            }
         });
         CTL.appendChild(PIN);
 
-        oWrap.appendChild(CTL);
+        STICKY.appendChild(CTL);
+
+        // 스크롤 시 셰브론 아이콘 갱신(∧/∨).
+        SCROLLER.addEventListener("scroll", _attrSyncChevron, { passive: true });
 
         /* ── (d) 속성 툴바 (구 HeaderToolbar): Reset … Show Changed Items ⋯ ? ── */
         var TBR = document.createElement("div");
@@ -3271,6 +3342,9 @@
 
                 //ui의 변경된 속성값 필터 처리 / 해제 (changedDataFilter 로직의 단순 필터).
                 oAPP.fn.fnRenderWs20AttrRows();
+
+                //토글로 버튼 텍스트(490↔491) 폭이 바뀌므로 오버플로 재계산.
+                try { if (_attrTbOvf) { _attrTbOvf.reflow(); } } catch (e) { }
             } finally {
                 try { oAPP.fn.setShortcutLock(false); } catch (e) { }
                 try { parent.setBusy && parent.setBusy(""); } catch (e) { }
@@ -3279,39 +3353,24 @@
         });
         TBR.appendChild(FLT);
 
-        //⋯ 오버플로 메뉴 (구 _oPresetList: priority "AlwaysOverflow" — 항상 ⋯ 안에 들어가는 버튼).
-        //   원본(uiAttributeArea.js:564) 은 OverflowToolbarButton 이 ⋯ 메뉴 항목으로 표시되고,
-        //   클릭 시 attrPresetPopup(별도 Electron 창, sap 무관) 을 연다. → ⋯ 버튼을 공통 드롭다운
-        //   메뉴(oAPP.ws10html.openMenuAt, .u4a-menu)로 만들고 그 안에 "UI Attribute Personalization
-        //   List"(652, icon user-settings→FA user-gear) 항목을 둔다.
+        //UI Attribute Personalization List (구 _oPresetList — 원본 sap-icon://user-settings).
+        //   ★ 사용자 요청: "이름이 보이는 버튼"으로 두고(아이콘+텍스트), 공간이 충분하면 버튼으로
+        //     보이다가 영역이 작아질 때만 ⋯(오버플로)로 접힌다 — 다른 헤더(트리/트랜잭션 툴바)의
+        //     U4AUI.attachOverflow 패턴과 동일(아래 attachOverflow 참조). ⋯ 는 상시 버튼이 아니라
+        //     폭이 모자랄 때만 나타난다.
+        //   클릭 시 attrPresetPopup(별도 Electron 창, sap 무관) 을 직접 연다.
         var PRE = document.createElement("button");
         PRE.type = "button";
         PRE.id = "ws20AttrPresetBtn";
         PRE.className = "u4aWs20AttrTbBtn";
         PRE.title = _wsMsg("652", "UI Attribute Personalization List");
-        PRE.setAttribute("aria-haspopup", "true");
-        PRE.innerHTML = '<i class="fa-solid fa-ellipsis"></i>';
+        PRE.innerHTML = '<i class="fa-solid fa-user-gear"></i><span>' + _wsMsg("652", "UI Attribute Personalization List") + '</span>';
         PRE.addEventListener("click", function () {
-            var aItems = [{
-                key: "ATTR_PRESET",
-                icon: "user-gear",   // 원본 sap-icon://user-settings 대응
-                text: _wsMsg("652", "UI Attribute Personalization List")
-            }];
-            // 항목 선택 → 원본 _oPresetList.press: attrPresetPopup(별도 Electron 창) 오픈.
-            function lf_select() {
-                try {
-                    var sPath = parent.PATH.join(oAPP.oDesign.pathInfo.designRootPath, "attrPresetPopup", "index.js");
-                    parent.require(sPath)(parent.REMOTE, oAPP);
-                } catch (e) {
-                    console.error("[HTML5][WS20] UI Attribute Personalization List 오픈 실패:", e);
-                }
-            }
-            var fnOpen = oAPP.ws10html && oAPP.ws10html.openMenuAt;
-            if (typeof fnOpen === "function") {
-                fnOpen(PRE, aItems, lf_select, "right");
-            } else {
-                // 공통 메뉴 헬퍼 미연결(이론상 없음) → 직접 오픈 폴백.
-                lf_select();
+            try {
+                var sPath = parent.PATH.join(oAPP.oDesign.pathInfo.designRootPath, "attrPresetPopup", "index.js");
+                parent.require(sPath)(parent.REMOTE, oAPP);
+            } catch (e) {
+                console.error("[HTML5][WS20] UI Attribute Personalization List 오픈 실패:", e);
             }
         });
         TBR.appendChild(PRE);
@@ -3328,7 +3387,32 @@
         });
         TBR.appendChild(HLP);
 
-        oWrap.appendChild(TBR);
+        //반응형 오버플로 — 폭이 충분하면 버튼으로, 좁아지면 ⋯ 메뉴로 접는다(사용자 요청).
+        //   스페이서(.u4aWs20AttrTbSpacer)는 측정/숨김 제외(isSkip), 우측정렬이라 ⋯ auto-margin 끔.
+        //   ⋯ 메뉴 라벨은 기본 btnLabel(span 텍스트 우선, 아이콘 버튼은 title 폴백)로 추출.
+        try {
+            if (window.U4AUI && window.U4AUI.attachOverflow) {
+                _attrTbOvf = window.U4AUI.attachOverflow(TBR, {
+                    btnClass: "u4aWs20AttrTbBtn",
+                    noOvfAutoMargin: true,
+                    isSkip: function (el) { return el.classList.contains("u4aWs20AttrTbSpacer"); }
+                });
+            }
+        } catch (e) { console.warn("[HTML5][WS20][attr] toolbar overflow attach 실패:", e && e.message); }
+
+        STICKY.appendChild(TBR);
+        SCROLLER.appendChild(STICKY);
+
+        // STICKY(셰브론+툴바) 실측 높이를 CSS 변수로 주입 → 그룹 헤더 sticky 가 그 아래에 붙는다.
+        //   + 레이아웃 안정 후 오버플로 재계산(초기 0폭 측정으로 ⋯ 가 잘못 떠 있던 것 보정).
+        function _attrSyncSticky() {
+            try { oWrap.style.setProperty("--ws20-attr-stickyh", (STICKY.offsetHeight || 60) + "px"); } catch (e) { }
+            try { if (_attrTbOvf) { _attrTbOvf.reflow(); } } catch (e) { }
+        }
+        try {
+            requestAnimationFrame(function () { _attrSyncSticky(); _attrSyncChevron(); });
+            setTimeout(_attrSyncSticky, 250);
+        } catch (e) { _attrSyncSticky(); }
 
         /* ── (e) 속성 행 스크롤 영역 ──
          *   (구 정적 "Properties" 섹션 바는 제거 — 원본처럼 그룹 헤더(Properties/Events/
@@ -3336,7 +3420,7 @@
         var ROWS = document.createElement("div");
         ROWS.id = "ws20AttrRows";
         ROWS.className = "u4aWs20AttrRows";
-        oWrap.appendChild(ROWS);
+        SCROLLER.appendChild(ROWS);
 
         oPane.appendChild(oWrap);
 
@@ -3480,9 +3564,9 @@
                 F4.type = "button";
                 F4.className = "u4a-field__vh";
                 F4.title = "Value Help";
-                //원본 sap.m.Input showValueHelp 의 기본 값도움 아이콘(sap-icon://value-help) 재현.
-                // (구 fa-angle-down 은 DDLB 드롭다운과 동일해 혼동 → value-help 전용 글리프로 교체)
-                F4.innerHTML = _iconHtml("sap-icon://value-help");
+                //원본 sap-icon://value-help(겹친 사각형) 재현 — F4 값도움은 아웃라인(fa-regular) clone
+                // 사용. (clone 솔리드는 클립보드 복사 버튼과 톤이 겹쳐, F4 만 regular 로 구분. 사용자 지정 2026-06-17)
+                F4.innerHTML = '<i class="fa-regular fa-clone"></i>';
                 F4.disabled = !bEnabled;
                 F4.addEventListener("click", function () {
                     console.warn("[W4+ 예정] F4 Value Help(attrCallValueHelp) 미변환:", sAttr.UIATT);
@@ -3703,10 +3787,14 @@
             var LTX = document.createElement("span");
             LTX.className = "u4aWs20AttrLblTxt";
             LTX.textContent = sAttr.UIATT || "";
-            //라벨 클릭 — 구 ObjectStatus press(설명글 팝업 callAttrDescPopup) [가드]
-            LTX.addEventListener("click", function () {
-                console.warn("[W4+ 예정] 속성 설명 팝업(callAttrDescPopup) 미변환");
-            });
+            //라벨 클릭 — 구 ObjectStatus press(설명글 팝업 callAttrDescPopup).
+            //  sAttr 는 var(함수 스코프)라 루프 마지막 값이 캡처되는 것을 막기 위해 IIFE 로 행별 캡처.
+            (function (oAnchor, oAttr) {
+                oAnchor.addEventListener("click", function () {
+                    try { oAPP.fn.callAttrDescPopup(oAnchor, oAttr); }
+                    catch (e) { console.warn("[HTML5][WS20][attr] callAttrDescPopup 오류:", e && e.message); }
+                });
+            })(LTX, sAttr);
             LBL.appendChild(LTX);
 
             ROW.appendChild(LBL);
@@ -3749,6 +3837,252 @@
         oAPP.fn.fnRenderWs20AttrRows();
 
     }; // end of oAPP.fn.fnRenderWs20AttrPanel
+
+    /************************************************************************
+     * [PUBLIC] 속성 설명글 팝업 (구 design/js/callAttrDescPopup.js 1:1 이식)
+     * ----------------------------------------------------------------------
+     *  속성 라벨(구 sap.m.ObjectStatus) 클릭 → 해당 속성의 설명을 앵커형 팝업으로.
+     *  · 설명 데이터: design/json/ATTR_DESC/{lang}/UI5_UI_DESCR.json (LIBNM+UIATT 매치)
+     *  · 라이브러리명: T_0023/T_0022/T_0027 로 ATTR 의 소유 UI 라이브러리 역추적
+     *    (상속 ISINH/EXT 예외 STYLECLASS·DRAGABLE·DROPABLE·DNDDROP 그대로 보존)
+     *  · 제목: [TITLE1 = attrUIATYDesc(UIATY)] › [TITLE2 = UIATT (Type : UIADT)]
+     *  · 본문: 원어(EN) 설명 + 세팅 언어가 EN 아니면 번역본 설명 (둘 다 read-only)
+     *  UI 만 sap.m.ResponsivePopover → 순수 HTML5 팝오버로 대체, 데이터 로직은 동일.
+     ************************************************************************/
+    //description 원어(EN) — 원본 C_EN.
+    var C_ATTR_DESC_EN = "EN";
+
+    //ATTR DESC JSON 파일 경로 (원본 lf_getDescData 경로 구성).
+    //  변환 셸이 미리 구한 designRootPath(.../ws30/ws10_20/design)를 우선 사용, 없으면 appPath 로 폴백.
+    function _attrDescJsonPath(sLang) {
+        try {
+            var sRoot = oAPP.oDesign && oAPP.oDesign.pathInfo && oAPP.oDesign.pathInfo.designRootPath;
+            if (sRoot) {
+                return parent.PATH.join(sRoot, "json", "ATTR_DESC", sLang, "UI5_UI_DESCR.json");
+            }
+            return parent.PATH.join(parent.REMOTE.app.getAppPath(),
+                "ws30", "ws10_20", "design", "json", "ATTR_DESC", sLang, "UI5_UI_DESCR.json");
+        } catch (e) { return ""; }
+    }
+
+    //ATTR DESC JSON 에서 대상 DESC 검색 (원본 lf_getDescData 1:1).
+    function _attrDescGetData(sLang, sLIBNM, sUIATT) {
+        try {
+            var l_path = _attrDescJsonPath(sLang);
+            if (!l_path || parent.FS.existsSync(l_path) !== true) { return; }
+            var l_json = parent.require(l_path);
+            if (!l_json) { return; }
+            return l_json.find(function (a) { return a.LIBNM === sLIBNM && a.UIATT === sUIATT; });
+        } catch (e) { return; }
+    }
+
+    //라이브러리명 검색 (원본 lf_getLibraryName 1:1 — DB 미로딩 시 안전 가드).
+    function _attrDescLibName(is_attr) {
+        try {
+            //ROOT는 ROOT의 OBJECT ID를 RETURN.
+            if (is_attr.OBJID === "ROOT") { return is_attr.OBJID; }
+
+            var LIB = oAPP.DATA && oAPP.DATA.LIB;
+            if (!LIB || !Array.isArray(LIB.T_0023)) { return; }
+
+            var l_UIATK = is_attr.UIATK;
+            var l_UIATY = is_attr.UIATY;
+            var l_UIOBK = is_attr.UIOBK;
+
+            //직접 입력이 가능한 AGGREGATION 인 경우.
+            if (l_UIATK.indexOf("_1") !== -1) {
+                l_UIATK = l_UIATK.replace("_1", "");
+                l_UIATY = "3";
+            }
+
+            //선택 ATTR 의 DB 정보 검색.
+            var ls_0023 = LIB.T_0023.find(function (a) { return a.UIATK === l_UIATK; });
+            if (!ls_0023) { return; }
+
+            //Embedded Aggregations 인 경우.
+            if (is_attr.UIATY === "6") {
+                l_UIATY = "3";
+                l_UIOBK = ls_0023.UIOBK;
+            }
+
+            //EXTENSION PROPERTY 예외 (styleClass / dragAble / dropAble / DnDDrop).
+            if (ls_0023.UIASN === "STYLECLASS" && ls_0023.ISEXT === "X") { return "sap.ui.core.Control"; }
+            if (ls_0023.UIASN === "DRAGABLE" && ls_0023.ISEXT === "X") { return "sap.m.NavContainer"; }
+            if (ls_0023.UIASN === "DROPABLE" && ls_0023.ISEXT === "X") { return "sap.m.NavContainer"; }
+            if (ls_0023.UIASN === "DNDDROP" && ls_0023.ISEXT === "X") { return "sap.m.NavContainer"; }
+
+            //현재 UI 정보 검색.
+            if (!Array.isArray(LIB.T_0022)) { return; }
+            var ls_0022 = LIB.T_0022.find(function (a) { return a.UIOBK === l_UIOBK; });
+            if (!ls_0022) { return; }
+
+            //ATTR 정보가 자신 UI 것인 경우(상속 아님) — 자신 UI 라이브러리명 RETURN.
+            if (ls_0023.ISINH === "") { return ls_0022.LIBNM; }
+
+            //부모 UI 정보 얻기.
+            if (!Array.isArray(LIB.T_0027)) { return; }
+            var lt_parent = LIB.T_0027.filter(function (a) { return a.TGOBJ === l_UIOBK && a.TOBTY === "3"; });
+            if (lt_parent.length === 0) { return; }
+
+            //부모 UI 를 탐색하며 ATTR 의 주인 확인.
+            var ls_0023t;
+            for (var i = 0, l = lt_parent.length; i < l; i++) {
+                var sSGOBJ = lt_parent[i].SGOBJ;
+                ls_0023t = LIB.T_0023.find(function (a) {
+                    return a.UIATT === is_attr.UIATT && a.UIOBK === sSGOBJ && a.UIATY === l_UIATY && a.ISINH === "";
+                });
+                if (ls_0023t) { break; }
+            }
+            if (!ls_0023t) { return; }
+
+            var ls_0022p = LIB.T_0022.find(function (a) { return a.UIOBK === ls_0023t.UIOBK; });
+            if (!ls_0022p) { return; }
+
+            return ls_0022p.LIBNM;
+        } catch (e) {
+            console.warn("[HTML5][WS20][attr] 라이브러리명 탐색 오류:", e && e.message);
+            return;
+        }
+    }
+
+    //"설명 없음" 에러 — 원본: 196 &1 does not exist. (&1 = A35 Description). parent.showMessage 가드.
+    function _attrDescErrNotExist() {
+        try {
+            parent.showMessage(sap, 10, "E",
+                APPCOMMON.fnGetMsgClsText("/U4A/MSG_WS", "196",
+                    APPCOMMON.fnGetMsgClsText("/U4A/CL_WS_COMMON", "A35", "", "", "", ""), "", "", ""));
+        } catch (e) {
+            console.warn("[HTML5][WS20][attr] 속성 설명 없음(196):", e && e.message);
+        }
+    }
+
+    //설명 팝업 DOM 구성 + 앵커 위치 + 닫기(X/바깥클릭/ESC).
+    function _attrDescBuildPopup(oAnchor, sTitle1, sTitle2, sLeft, sRight) {
+        var oOld = document.getElementById("ws20AttrDescPop");
+        if (oOld) { try { oOld.remove(); } catch (e) { } }
+
+        var POP = document.createElement("div");
+        POP.id = "ws20AttrDescPop";
+        POP.className = "u4aWs20DescPop";
+
+        //── 헤더: breadcrumb 제목(구 sap.m.Breadcrumbs) + 닫기 버튼 ──
+        var HD = document.createElement("div");
+        HD.className = "u4aWs20DescHd";
+
+        var CRUMB = document.createElement("div");
+        CRUMB.className = "u4aWs20DescCrumb";
+        if (sTitle1) {
+            var L1 = document.createElement("span");
+            L1.className = "u4aWs20DescCrumbLink";
+            L1.textContent = sTitle1;
+            CRUMB.appendChild(L1);
+            var SEP = document.createElement("span");
+            SEP.className = "u4aWs20DescCrumbSep";
+            SEP.textContent = ">";   // 구 separatorStyle:"GreaterThan"
+            CRUMB.appendChild(SEP);
+        }
+        var L2 = document.createElement("span");
+        L2.className = "u4aWs20DescCrumbCur";
+        L2.textContent = sTitle2;
+        CRUMB.appendChild(L2);
+        HD.appendChild(CRUMB);
+
+        var X = document.createElement("button");
+        X.type = "button";
+        X.className = "u4aWs20DescX";
+        X.title = _msg("A39", "Close");
+        X.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+        HD.appendChild(X);
+        POP.appendChild(HD);
+
+        //── 본문: 원어/번역 설명 textarea (구 read-only TextArea ×2) ──
+        var BODY = document.createElement("div");
+        BODY.className = "u4aWs20DescBody";
+        if (sLeft !== "") {
+            var TA1 = document.createElement("textarea");
+            TA1.className = "u4aWs20DescArea";
+            TA1.readOnly = true;
+            TA1.value = sLeft;
+            BODY.appendChild(TA1);
+        }
+        if (sRight !== "") {
+            var TA2 = document.createElement("textarea");
+            TA2.className = "u4aWs20DescArea";
+            TA2.readOnly = true;
+            TA2.value = sRight;
+            BODY.appendChild(TA2);
+        }
+        POP.appendChild(BODY);
+
+        document.body.appendChild(POP);
+
+        //위치 — 클릭한 라벨 기준(구 openBy). 아래쪽 우선, 화면 밖이면 위/안쪽으로 클램프.
+        try {
+            var r = oAnchor.getBoundingClientRect();
+            var iLeft = r.left;
+            var iTop = r.bottom + 4;
+            if (iLeft + POP.offsetWidth > window.innerWidth - 6) { iLeft = window.innerWidth - POP.offsetWidth - 6; }
+            if (iLeft < 6) { iLeft = 6; }
+            if (iTop + POP.offsetHeight > window.innerHeight - 6) {
+                iTop = Math.max(6, r.top - POP.offsetHeight - 4);   // 아래 공간 부족 → 라벨 위로
+            }
+            POP.style.left = iLeft + "px";
+            POP.style.top = iTop + "px";
+        } catch (e) { }
+
+        function _close() {
+            document.removeEventListener("mousedown", _onOutside, true);
+            document.removeEventListener("keydown", _onEsc, true);
+            try { POP.remove(); } catch (e) { }
+        }
+        function _onOutside(ev) {
+            if (ev.target.closest && ev.target.closest("#ws20AttrDescPop")) { return; }
+            _close();
+        }
+        function _onEsc(ev) { if (ev.key === "Escape") { ev.stopPropagation(); _close(); } }
+
+        X.addEventListener("click", _close);
+        //여는 클릭의 잔여 이벤트가 즉시 닫지 않도록 다음 틱에 바깥클릭/ESC 리스너 부착(Find 팝업과 동일).
+        setTimeout(function () {
+            document.addEventListener("mousedown", _onOutside, true);
+            document.addEventListener("keydown", _onEsc, true);
+        }, 0);
+    }
+
+    oAPP.fn.callAttrDescPopup = function (oUi, is_attr) {
+        //openBy 대상 UI/속성정보 없으면 종료(원본 동일).
+        if (!oUi || !is_attr) { return; }
+
+        //대상 attribute 의 라이브러리명 탐색 — 못 찾으면 "설명 없음"(196).
+        var l_LIBNM = _attrDescLibName(is_attr);
+        if (!l_LIBNM) { _attrDescErrNotExist(); return; }
+
+        //원어(EN) DESC 검색.
+        var ls_desc1 = _attrDescGetData(C_ATTR_DESC_EN, l_LIBNM, is_attr.UIATT);
+        var ls_desc2;
+
+        //세팅 언어가 원어와 다르면 번역본 DESC 검색.
+        var sGLangu = (oAPP.oDesign && oAPP.oDesign.settings && oAPP.oDesign.settings.GLANGU) || C_ATTR_DESC_EN;
+        if (sGLangu !== C_ATTR_DESC_EN) {
+            ls_desc2 = _attrDescGetData(sGLangu, l_LIBNM, is_attr.UIATT);
+        }
+
+        //두 언어 다 DESC 를 못 찾은 경우 — "설명 없음"(196).
+        var sL = (ls_desc1 && ls_desc1.DESCR) ? ls_desc1.DESCR : "";
+        var sR = (ls_desc2 && ls_desc2.DESCR) ? ls_desc2.DESCR : "";
+        if (sL === "" && sR === "") { _attrDescErrNotExist(); return; }
+
+        //제목 구성 — TITLE1 = 그룹명(Properties/Aggregations/Events/Associations), TITLE2 = UIATT (Type : UIADT).
+        var sTitle1 = "";
+        try { sTitle1 = oAPP.fn.attrUIATYDesc(is_attr.UIATY) || ""; } catch (e) { }
+        var sTitle2 = is_attr.UIATT || "";
+        if (is_attr.UIADT !== "" && is_attr.UIADT != null) {
+            //A51 Type
+            sTitle2 = sTitle2 + " (" + _msg("A51", "Type") + " : " + is_attr.UIADT + ")";
+        }
+
+        _attrDescBuildPopup(oUi, sTitle1, sTitle2, sL, sR);
+    }; // end of oAPP.fn.callAttrDescPopup
 
     /* ====================================================================
      * (8) [OVERRIDE] oAPP.fn.uiAttributeArea

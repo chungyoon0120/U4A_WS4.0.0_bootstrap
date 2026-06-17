@@ -271,7 +271,7 @@
     //   sap 무관). ws_events.js 의 원본 핸들러 그대로 호출.
     //   Create(Ctrl+F12/버튼) → ev_AppCreate → 이름검증·존재확인 후 HTML5 생성 팝업
     //   (design/js/createApplicationPopup.js). ws_html5_shell.js override 참조.
-    var WIRED_EVENTS = { ev_AppCreate: 1, ev_AppDisplay: 1, ev_AppChange: 1, ev_NewWindow: 1, ev_AppExec: 1 };
+    var WIRED_EVENTS = { ev_AppCreate: 1, ev_AppChange: 1, ev_AppDelete: 1, ev_AppDisplay: 1, ev_NewWindow: 1, ev_AppExec: 1, ev_AppCopy: 1 };
     function _invoke(sName, sLabel) {
         if (WIRED_EVENTS[sName] && window.oAPP && oAPP.events && typeof oAPP.events[sName] === "function") {
             try { oAPP.events[sName](); }
@@ -288,6 +288,41 @@
         // 윈도우 메뉴: 실제 핸들러 oAPP.fn.fnWS10{key} 호출 (fnHmws.js)
         if (_callReal("fnWS10" + sKey, sLabel)) { return; }
         _showFooter("I", sLabel + " (" + sKey + ") — 미구현 항목");
+    }
+
+    /********************************************************************
+     * [공통] SAP T-CODE 실행 — 원본 ev_pressTcodeInputSubmit(ws_events_01.js 326)
+     *   + oAPP.common.execControllerClass(ws_common.js 2549) 이식.
+     *   공통 헤더(WS10/WS20)의 T-CODE 입력(.u4a-tcode #sapTcode) Enter 시 호출.
+     *   대문자화 → 정규식 검증(062) → 이력저장(fnSaveTCodeSuggestion)/SUGG갱신 → 실행.
+     ********************************************************************/
+    function _runTcode(sValue) {
+        sValue = (sValue == null ? "" : String(sValue)).trim();
+        if (sValue === "") { return; }
+
+        var sTcode = sValue.toUpperCase();
+
+        // 원본 정규식: 영숫자 / _ 만 허용. 위반 시 062 & invalid transaction ID.
+        if (!/^[a-zA-Z0-9/_]*$/.test(sTcode)) {
+            try {
+                var sMsg = oAPP.common.fnGetMsgClsText("/U4A/MSG_WS", "062", sTcode);
+                oAPP.common.fnShowFloatingFooterMsg("E", parent.getCurrPage(), sMsg);
+            } catch (e) { }
+            var oClr = document.getElementById("sapTcode"); if (oClr) { oClr.value = ""; }
+            return;
+        }
+
+        // 대문자 반영 (원본 oSrchField.setValue(sTcode))
+        var oInp = document.getElementById("sapTcode"); if (oInp) { oInp.value = sTcode; }
+
+        // 이력 저장 + /SUGG/TCODE 모델 갱신 (원본 동일)
+        try { oAPP.fn.fnSaveTCodeSuggestion(sTcode); } catch (e) { }
+        try { oAPP.common.fnSetModelProperty("/SUGG/TCODE", oAPP.fn.fnReadTCodeSuggestion()); } catch (e) { }
+
+        // 실행 (원본 execControllerClass(null, null, sTcode, oAppInfo))
+        var oAppInfo = {}; try { oAppInfo = parent.getAppInfo() || {}; } catch (e) { }
+        try { oAPP.common.execControllerClass(null, null, sTcode, oAppInfo); }
+        catch (e) { console.error("[HTML5] T-CODE 실행 오류:", e && e.message ? e.message : e); }
     }
 
     /********************************************************************
@@ -701,8 +736,17 @@
         oTcode.placeholder = "SAP T-CODE";
         oTcode.autocomplete = "off";
         oTcode.addEventListener("keydown", function (e) {
-            if (e.key === "Enter") { _invoke("ev_TcodeRun", "SAP T-CODE: " + (oTcode.value || "")); }
+            if (e.key === "Enter") { e.preventDefault(); _runTcode(oTcode.value); }
         });
+        // SAP T-CODE 이력 자동완성 (원본 ev_suggestSapTcode — fnReadTCodeSuggestion 의 {TCODE} 목록)
+        if (window.U4AUI && U4AUI.attachSuggest && typeof oAPP.fn.fnReadTCodeSuggestion === "function") {
+            U4AUI.attachSuggest(oTcode,
+                function () {
+                    try { return (oAPP.fn.fnReadTCodeSuggestion() || []).map(function (o) { return o && o.TCODE; }).filter(Boolean); }
+                    catch (e) { return []; }
+                },
+                function (v) { oTcode.value = v; });   // 선택 시 채움(원본처럼 실행은 Enter)
+        }
         o.appendChild(oTcode);
 
         o.appendChild(_iconBtn(ICON.pin, "Pin", function () { _invoke("ev_Pin", "Pin"); }));

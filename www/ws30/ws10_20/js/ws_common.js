@@ -2586,8 +2586,8 @@
                 parent.IPCRENDERER.send("if-browser-interconnection", oSendData);
 
                 if (result && result.RTMSG) {
-                    // 메시지 처리...
-                    parent.showMessage(sap, 10, 'E', result.RTMSG);
+                    // 메시지 처리... ([HTML5] sap 미정의 — null)
+                    parent.showMessage(null, 10, 'E', result.RTMSG);
                 }
 
             });
@@ -3613,77 +3613,90 @@
      * illustrationType
      * illustrationSize
      */
+    // [HTML5] 구 sap.m.IllustratedMessage(tnt-Radar) + sap.m.Dialog → 네이티브 <dialog>.
+    //   레이더 스윕 SVG 일러스트(테마색·회전 스윕·blip) + 제목/설명 카드. sap 의존 제거.
+    //   SAPGUI 실행 등 진행 안내 모달(IPC if-browser-interconnection 으로 호출).
     oAPP.common.fnIllustMsgDialogOpen = (oOptions) => {
+        oOptions = oOptions || {};
+        var sDialogId = "u4aWsIllustedMsgDialog";
 
-        var sDialogId = "u4aWsIllustedMsgDialog",
-            sIllustId = "u4aWsIllustedMsg";
-
-        var oDialog = sap.ui.getCore().byId(sDialogId),
-            oIllustMsg = sap.ui.getCore().byId(sIllustId);
-
-        if (oDialog && typeof oOptions === "object") {
-
-            lf_setIllustMsg(oIllustMsg, oOptions);
-
-            oDialog.open();
-
-            return;
+        // 스타일 1회 주입 — 카드/텍스트는 테마 토큰(HTML 이라 var() 동작), 일러스트(위성안테나)는
+        //   고정 블루 하드코딩(원본 SAP IllustratedMessage 처럼 테마 무관 + SVG 속성 var() 미동작 회피).
+        if (!document.getElementById("u4aWsIllustStyle")) {
+            var st = document.createElement("style");
+            st.id = "u4aWsIllustStyle";
+            st.textContent =
+                // ★ u4a-dialog 클래스의 min-width(22rem)/box-shadow/border-radius 가 새어나와
+                //   투명 다이얼로그가 카드보다 넓어지고(좌측정렬) 우측에 그림자·둥근모서리가
+                //   "카드 가장자리처럼" 삐져나오던 것 차단 — 다이얼로그를 카드 크기에 딱 맞춘다.
+                ".u4aWsIllustDlg{border:0;padding:0;background:transparent;overflow:visible;" +
+                "min-width:0;max-width:none;width:fit-content;box-shadow:none;border-radius:0}" +
+                ".u4aWsIllustDlg::backdrop{background:rgba(2,6,12,.55);backdrop-filter:blur(2px)}" +
+                ".u4aWsIllustCard{display:flex;flex-direction:column;align-items:center;gap:.55rem;" +
+                "padding:1.6rem 2.1rem 1.5rem;text-align:center;min-width:16rem;max-width:21rem;" +
+                "background:var(--surface-raised,#1b2128);color:var(--text,#fff);" +
+                "border:1px solid var(--line,#33414f);border-radius:16px;" +
+                "box-shadow:var(--popover-shadow,0 18px 50px rgba(0,0,0,.55));" +
+                "animation:u4aWsIllustIn .18s ease both}" +
+                ".u4aWsIllustArt{width:7.5rem;height:auto;display:block;margin-bottom:.35rem}" +
+                ".u4aWsIllustTitle{font-weight:700;font-size:1.02rem;letter-spacing:.2px}" +
+                ".u4aWsIllustDesc{font-size:.8125rem;color:var(--text-muted,#9aa3ad);line-height:1.45;min-height:1.1em}" +
+                "@keyframes u4aWsIllustIn{from{opacity:0;transform:translateY(6px) scale(.97)}to{opacity:1;transform:none}}" +
+                "@media(prefers-reduced-motion:reduce){.u4aWsIllustCard{animation:none}}";
+            document.head.appendChild(st);
         }
 
-        var oIllustMsg = new sap.m.IllustratedMessage(sIllustId).addStyleClass(`${sDialogId}--illustMsg`);
-
-        new sap.m.Dialog(sDialogId, {
-
-            // properties
-            showHeader: false,
-            horizontalScrolling: false,
-            verticalScrolling: false,
-
-            // aggregations
-            content: [
-                oIllustMsg,
-            ],
-            afterClose: () => {
-
-                var oIllustMsg = sap.ui.getCore().byId(sIllustId);
-                if (!oIllustMsg) {
-                    return;
-                }
-
-                let oOptions = {
-                    title: "",
-                    description: "",
-                    illustrationType: "NoSearchResults",
-                    illustrationSize: sap.m.IllustratedMessageSize.Auto
-                };
-
-                lf_setIllustMsg(oIllustMsg, oOptions);
-
-            },
-            // Events
-            escapeHandler: () => { }, // esc 키 방지
-
-        })
-            .addStyleClass(`${sDialogId}`)
-            .open();
-
-        var oIllustMsg = sap.ui.getCore().byId(sIllustId);
-
-        lf_setIllustMsg(oIllustMsg, oOptions);
-
-        function lf_setIllustMsg(oIllustMsg, oOptions) {
-            
-            if(oOptions.title){ oIllustMsg.setTitle(oOptions.title); }
-            if(oOptions.description){ oIllustMsg.setDescription(oOptions.description); }
-            if(oOptions.illustrationType){ oIllustMsg.setIllustrationType(oOptions.illustrationType); }
-            if(oOptions.illustrationSize){ oIllustMsg.setIllustrationSize(oOptions.illustrationSize); }
-
-            // oIllustMsg.setTitle(oOptions.title || "");
-            // oIllustMsg.setDescription(oOptions.description || "");
-            // oIllustMsg.setIllustrationType(oOptions.illustrationType || "NoSearchResults");
-            // oIllustMsg.setIllustrationSize(oOptions.illustrationSize || sap.m.IllustratedMessageSize.Auto);
-
+        var oDlg = document.getElementById(sDialogId);
+        if (!oDlg) {
+            oDlg = document.createElement("dialog");
+            oDlg.id = sDialogId;
+            // ★ u4a-dialog 클래스 제거 — 그 클래스의 min-width(22rem)/box-shadow/border-radius 가
+            //   카드보다 넓은 투명 박스를 만들어 우측에 반투명 그림자 슬라이버가 삐져나오던 원인.
+            //   레이더 카드(.u4aWsIllustCard)가 자체 배경·보더·그림자를 다 가지므로 다이얼로그는
+            //   순수 컨테이너(.u4aWsIllustDlg)면 충분.
+            oDlg.className = "u4aWsIllustDlg";
+            oDlg.innerHTML =
+                '<div class="u4aWsIllustCard">' +
+                // 레이더 스코프 일러스트(동심원+십자선+회전 스윕+blip) — 고정 그린, SMIL 애니메이션
+                '<svg class="u4aWsIllustArt" viewBox="232 30 216 216" aria-hidden="true">' +
+                '<defs>' +
+                '<radialGradient id="u4aRadarGlow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#2fe3a0" stop-opacity=".28"/><stop offset="1" stop-color="#2fe3a0" stop-opacity="0"/></radialGradient>' +
+                '<radialGradient id="u4aRadarScreen" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#0c2019"/><stop offset="1" stop-color="#07120d"/></radialGradient>' +
+                '</defs>' +
+                '<circle cx="340" cy="138" r="104" fill="url(#u4aRadarGlow)"/>' +
+                '<circle cx="340" cy="138" r="92" fill="#0a1712" stroke="#26352f" stroke-width="5"/>' +
+                '<circle cx="340" cy="138" r="88" fill="url(#u4aRadarScreen)"/>' +
+                '<g fill="none" stroke="#2fe3a0">' +
+                '<circle cx="340" cy="138" r="86" stroke-opacity=".22"/>' +
+                '<circle cx="340" cy="138" r="60" stroke-opacity=".20"/>' +
+                '<circle cx="340" cy="138" r="32" stroke-opacity=".18"/>' +
+                '<line x1="340" y1="52" x2="340" y2="224" stroke-opacity=".16"/>' +
+                '<line x1="254" y1="138" x2="426" y2="138" stroke-opacity=".16"/>' +
+                '</g>' +
+                '<g><animateTransform attributeName="transform" type="rotate" from="0 340 138" to="360 340 138" dur="3.2s" repeatCount="indefinite"/>' +
+                '<path d="M340 138 L340 52 A86 86 0 0 0 256 110 Z" fill="#2fe3a0" fill-opacity=".16"/>' +
+                '<line x1="340" y1="138" x2="340" y2="52" stroke="#6cffd0" stroke-width="2.5" stroke-linecap="round"/></g>' +
+                '<circle cx="392" cy="104" r="3.4" fill="#8affe0"><animate attributeName="opacity" values="0;1;1;0" dur="3.2s" begin="0s" repeatCount="indefinite"/></circle>' +
+                '<circle cx="300" cy="178" r="3" fill="#8affe0"><animate attributeName="opacity" values="0;1;1;0" dur="3.2s" begin="1.4s" repeatCount="indefinite"/></circle>' +
+                '<circle cx="372" cy="186" r="2.6" fill="#8affe0"><animate attributeName="opacity" values="0;1;1;0" dur="3.2s" begin="2.3s" repeatCount="indefinite"/></circle>' +
+                '<circle cx="340" cy="138" r="3.5" fill="#6cffd0"/>' +
+                '<g fill="none" stroke="#3a554c" stroke-width="2" stroke-linecap="round">' +
+                '<line x1="340" y1="46" x2="340" y2="54"/><line x1="340" y1="222" x2="340" y2="230"/>' +
+                '<line x1="248" y1="138" x2="256" y2="138"/><line x1="424" y1="138" x2="432" y2="138"/>' +
+                '</g>' +
+                '</svg>' +
+                '<div class="u4aWsIllustTitle"></div>' +
+                '<div class="u4aWsIllustDesc"></div>' +
+                '</div>';
+            // esc 로 닫히지 않게(원본 escapeHandler 빈 함수)
+            oDlg.addEventListener("cancel", function (e) { e.preventDefault(); });
+            document.body.appendChild(oDlg);
         }
+
+        oDlg.querySelector(".u4aWsIllustTitle").textContent = oOptions.title || "";
+        oDlg.querySelector(".u4aWsIllustDesc").textContent = oOptions.description || "";
+
+        try { if (!oDlg.hasAttribute("open")) { oDlg.showModal(); } } catch (e) { }
 
     }; // end of oAPP.common.fnIllustMsgDialogOpen
 
@@ -3691,15 +3704,9 @@
      * IllustMessage Dialog Close     
      */
     oAPP.common.fnIllustMsgDialogClose = () => {
-
-        var sDialogId = "u4aWsIllustedMsgDialog",
-            oDialog = sap.ui.getCore().byId(sDialogId);
-
-        if (!oDialog) {
-            return;
-        }
-
-        oDialog.close();
+        // [HTML5] 네이티브 <dialog> 닫기 (sap 의존 제거)
+        var oDlg = document.getElementById("u4aWsIllustedMsgDialog");
+        if (oDlg) { try { oDlg.close(); } catch (e) { } }
 
     }; // end of oAPP.common.fnIllustMsgDialogClose
 
@@ -3884,8 +3891,8 @@ function fnJsonParseError(e) {
 
     // JSON parse 오류 일 경우는 critical 오류로 판단하여 메시지 팝업 호출 후 창 닫게 만든다.
 
-    // 화면 Lock 해제
-    sap.ui.getCore().unlock();
+    // 화면 Lock 해제 ([HTML5] UI5 제거 환경에선 sap 미정의 — 가드)
+    if (typeof sap !== "undefined" && sap.ui) { sap.ui.getCore().unlock(); }
 
     parent.setBusy("");
 
@@ -3893,7 +3900,7 @@ function fnJsonParseError(e) {
     let sErrmsg = oAPP.common.fnGetMsgClsText("/U4A/MSG_WS", "192") + " \n \n " + e.toString();
     // let sErrmsg = "Critical Error 관리자에게 문의 하세요. \n\n " + e.toString();
 
-    parent.showMessage(sap, 20, "E", sErrmsg, fnCriticalError);
+    parent.showMessage(null, 20, "E", sErrmsg, fnCriticalError);
 
 }
 

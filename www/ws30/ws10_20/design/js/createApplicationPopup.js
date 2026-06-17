@@ -48,10 +48,7 @@
         .u4aCapDlg { width: min(72vw, 1080px); height: min(82vh, 720px); padding: 0; display: flex; flex-direction: column; }
         .u4aCapDlg .u4a-dialog__header { cursor: move; user-select: none; }
         .u4aCapDlg .u4a-dialog__header span { flex: 1 1 auto; }
-        .u4aCapX { border: 0; background: transparent; color: var(--icon-muted); cursor: pointer;
-                   width: 1.75rem; height: 1.75rem; border-radius: var(--radius-sm); display: inline-flex;
-                   align-items: center; justify-content: center; font-size: 1rem; }
-        .u4aCapX:hover { background: var(--hover-bg); color: var(--state-error); }
+        /* 닫기 X 스타일은 공통 .u4a-btn-icon(+data-act=close hover 빨강)으로 통일 — 개별 .u4aCapX 스타일 제거 */
         .u4aCapTabs { display: flex; gap: 0.25rem; padding: 0 1rem; border-bottom: 0.0625rem solid var(--line);
                       background: var(--surface); flex: 0 0 auto; }
         .u4aCapTab { appearance: none; border: 0; background: transparent; color: var(--text-muted);
@@ -65,9 +62,15 @@
         .u4aCapGrid { display: grid; grid-template-columns: 1fr; gap: 1rem 1.5rem; }
         .u4aCapGrid.u4aCap2col { grid-template-columns: 1fr 1fr; }
         @media (max-width: 720px) { .u4aCapGrid.u4aCap2col { grid-template-columns: 1fr; } }
+        /* 2단 그리드의 각 컬럼(Dataset 좌/우) — 내부 행 간격을 General 단일그리드(row-gap 1rem)와 동일하게.
+           (이게 없으면 컬럼 안 행들이 gap 없이 붙어 빽빽하게 보임) */
+        .u4aCapCol { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
         .u4aCapRow { position: relative; display: flex; flex-direction: column; gap: 0.3125rem; }
         .u4aCapRow .u4a-field__msg { white-space: nowrap; }
         .u4aCapDesc { font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.125rem; min-height: 1em; }
+        /* 셀렉트(콤보) 에러 상태 — 입력 .u4a-input[data-vs=error] 와 동일하게 빨강 테두리.
+           (.u4aCapDlg 스코프로 다이얼로그 필드 위계 규칙(.u4a-dialog .u4a-combo)을 이김) */
+        .u4aCapDlg .u4aCapErr { border-color: var(--state-error); }
         .u4aCapRadios { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; align-items: center; min-height: 2.25rem; }
         .u4aCapRadio { display: inline-flex; align-items: center; gap: 0.375rem; cursor: pointer; color: var(--text); }
         .u4aCapRadio input { accent-color: var(--accent); width: 1rem; height: 1rem; cursor: pointer; }
@@ -77,6 +80,8 @@
         .u4aCapFoot .u4aCapSpacer { flex: 1 1 auto; }
         .u4aCapFoot .u4aCapSep { width: 0.0625rem; height: 1.5rem; background: var(--line); margin: 0 0.25rem; }
         `;
+        // ※ 영역별 색 위계(헤더/푸터 chrome ▸ 바디 well ▸ 필드 pop + 상단 accent 띠)는
+        //    공통 .u4a-dialog (shell.css) 로 통일 — 이 팝업만의 개별 스타일을 두지 않는다.
         document.head.appendChild(oStyle);
     }
 
@@ -160,8 +165,12 @@
             oInput = _el("input", "u4a-input u4a-field__input");
             oWrap.appendChild(oInput);
             if (bClear) {
-                oClearBtn = _el("button", "u4a-field__clear", "×");
+                // clear(X) 글리프는 전 화면 공통(ws10/WS10/Login/WS20 = fa-xmark)과 동일하게 — 텍스트 "×" 금지.
+                oClearBtn = _el("button", "u4a-field__clear");
                 oClearBtn.type = "button";
+                oClearBtn.title = "Clear";
+                oClearBtn.tabIndex = -1;
+                oClearBtn.innerHTML = _fa("xmark");
                 oWrap.appendChild(oClearBtn);
             }
             if (bVh) {
@@ -179,6 +188,12 @@
 
         if (cfg.maxLength) { oInput.maxLength = cfg.maxLength; }
         if (cfg.readOnly) { oInput.readOnly = true; }
+        // 읽기 전용 표시 필드 — 편집 가능 필드와 구분되게 '잠긴' 톤(.u4a-input--display, shell.css).
+        if (cfg.display) {
+            oInput.classList.add("u4a-input--display");
+            oInput.readOnly = true;
+            oInput.tabIndex = -1;
+        }
 
         // 입력 변경 → 모델 반영 (+ 대문자/추가 onChange)
         oInput.addEventListener("change", function () {
@@ -282,10 +297,14 @@
 
         const oHeader = _el("div", "u4a-dialog__header");
         oHeader.setAttribute("data-type", "I");
-        oHeader.innerHTML = _fa("file-circle-plus") + '<span></span>';
+        // 헤더 아이콘은 메인 툴바 Create 버튼(WS10.js appCreateBtn: fa-file)과 동일하게 — 사용자 인지 통일.
+        oHeader.innerHTML = _fa("file") + '<span></span>';
         oHeader.querySelector("span").textContent = sTitle;
-        const oXBtn = _el("button", "u4aCapX");
+        // 닫기 X — 다른 다이얼로그(Change Layout/Insert)와 동일하게 공통 .u4a-btn-icon + data-act="close".
+        //   (.u4aCapX 는 드래그 제외용 JS 훅으로만 유지, 스타일은 공통 컴포넌트가 담당)
+        const oXBtn = _el("button", "u4a-btn-icon u4aCapX");
         oXBtn.type = "button";
+        oXBtn.setAttribute("data-act", "close");
         oXBtn.innerHTML = _fa("xmark");
         oXBtn.title = _txt("/U4A/CL_WS_COMMON", "A39"); // Close
         oXBtn.addEventListener("click", function () { lf_closeDialog(oDlg); });
@@ -405,6 +424,9 @@
         oDlg.addEventListener("cancel", function (e) { e.preventDefault(); lf_closeDialog(oDlg); });
 
         _attachDrag(oDlg, oHeader);
+        // 헤더 더블클릭 → 화면 중앙 복귀 / 우하단 grip → 크기조절 (공통 U4AUI, SAPUI5 동일 UX)
+        if (window.U4AUI && U4AUI.makeDialogRecenter) { U4AUI.makeDialogRecenter(oDlg, oHeader); }
+        if (window.U4AUI && U4AUI.makeDialogResizable) { U4AUI.makeDialogResizable(oDlg, { minW: 480, minH: 360 }); }
 
         document.body.appendChild(oDlg);
         oDlg.showModal();
@@ -503,9 +525,9 @@
         });
         oGrid.appendChild(oR.row);
 
-        // Request Desc (B04) — readonly
+        // Request Desc (B04) — 읽기 전용(Request No 선택 시 자동 채움). 편집 가능 필드와 '잠긴 톤'으로 구분.
         oR = _row(_txt("/U4A/CL_WS_COMMON", "B04"), false);
-        oUIobj.gen.oInpReqTx = _buildInput(oModel, oR, { valPath: "/CREATE/REQTX", readOnly: true, editPath: "/__never" });
+        oUIobj.gen.oInpReqTx = _buildInput(oModel, oR, { valPath: "/CREATE/REQTX", display: true });
         oGrid.appendChild(oR.row);
 
         return oPage;
@@ -618,9 +640,9 @@
         });
         oLeft.appendChild(oR.row);
 
-        // Request Desc (B04)
+        // Request Desc (B04) — 읽기 전용(General 탭과 동일하게 '잠긴 톤'으로 구분)
         oR = _row(_txt("/U4A/CL_WS_COMMON", "B04"), false);
-        oUIobj.dataset.oInpReqTx = _buildInput(oModel, oR, { valPath: "/DATASET/REQTX", readOnly: true, editPath: "/__never" });
+        oUIobj.dataset.oInpReqTx = _buildInput(oModel, oR, { valPath: "/DATASET/REQTX", display: true });
         oLeft.appendChild(oR.row);
 
         // ── 우측 컨테이너: Search Layout ───────────────────────────────

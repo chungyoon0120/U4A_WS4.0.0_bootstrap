@@ -24,6 +24,73 @@
     var APPCOMMON = oAPP.common;
 
     /************************************************************************
+     * [HTML5] sap 전역 스텁 (UI5 부트스트랩 제거 대응)
+     * ---------------------------------------------------------------------
+     *  서버가 내려주는 eval SCRIPT 가 UI5 객체를 참조한다 — 특히
+     *    parent.showMessage(sap, 20, 'W', '메시지..')
+     *  처럼 sap 을 "인자로만" 넘기는 케이스. 서버를 못 고치는 상황에서, sap 전역이
+     *  없으면 인자 평가 시점에 ReferenceError → window.onerror(ws_trycatch) → APP.exit()
+     *  로 앱이 죽는다. 부모(resources/index.js) showMessage 는 이미 oUI5(sap) 인자를
+     *  "무시"하고 타입(S/E/W/I)·KIND 별로만 출력하므로, 여기선 sap 이 "존재하기만" 하면 된다.
+     *
+     *  단순 {} 로 두면 maximize 핸들러(ws_main.js)의 `if (typeof sap === "undefined")`
+     *  가드가 풀려 sap.ui.getCore().byId(...) 에서 TypeError 가 나므로,
+     *  byId()→null / lock·unlock→no-op 인 "안전 스텁"으로 만든다(해당 핸들러는 byId null
+     *  이면 즉시 return). sap.m.MessageToast/MessageBox 를 직접 부르는 서버 스크립트도
+     *  parent.showMessage 로 라우팅해 동일 메시지 시스템으로 출력한다.
+     *
+     *  ※ UI5 를 되살리는 게 아니라 "안 죽고 메시지만 뜨게" 하는 호환 셰임이다.
+     ************************************************************************/
+    if (typeof window.sap === "undefined") {
+        (function () {
+            function _noop() { }
+            function _show(KIND, TYPE, sMsg, fnCb) {
+                try { parent.showMessage(null, KIND, TYPE, sMsg, fnCb); } catch (e) { }
+            }
+            // 구 sap.ui.getCore() — byId 는 null(컨트롤 없음), lock/unlock/테마는 no-op.
+            var oCore = {
+                byId: function () { return null; },
+                lock: _noop,
+                unlock: _noop,
+                applyTheme: _noop,
+                setModel: _noop,
+                getModel: function () { return null; },
+                setLanguage: _noop,
+                attachInit: function (fn) { try { if (typeof fn === "function") { fn(); } } catch (e) { } },
+                getConfiguration: function () {
+                    return { getLanguage: function () { return ""; }, getRTL: function () { return false; } };
+                }
+            };
+            window.sap = {
+                ui: {
+                    getCore: function () { return oCore; },
+                    Device: { system: {}, browser: {}, support: {}, os: {}, media: { attach: _noop, detach: _noop } }
+                },
+                m: {
+                    // 구 MessageToast.show → 토스트(KIND 10)
+                    MessageToast: { show: function (sMsg) { _show(10, "I", sMsg); } },
+                    // 구 MessageBox.* → 메시지박스(KIND 20). 콜백(onClose) 전달.
+                    MessageBox: {
+                        show: function (sMsg, o) { _show(20, (o && o.type) || "I", sMsg, o && o.onClose); },
+                        alert: function (sMsg, o) { _show(20, "I", sMsg, o && o.onClose); },
+                        error: function (sMsg, o) { _show(20, "E", sMsg, o && o.onClose); },
+                        warning: function (sMsg, o) { _show(20, "W", sMsg, o && o.onClose); },
+                        information: function (sMsg, o) { _show(20, "I", sMsg, o && o.onClose); },
+                        success: function (sMsg, o) { _show(20, "S", sMsg, o && o.onClose); },
+                        confirm: function (sMsg, o) { _show(30, "W", sMsg, o && o.onClose); },
+                        Icon: { ERROR: "E", WARNING: "W", INFORMATION: "I", SUCCESS: "S", QUESTION: "C", NONE: "" },
+                        Action: { OK: "OK", YES: "YES", NO: "NO", CANCEL: "CANCEL", CLOSE: "CLOSE", ABORT: "ABORT", RETRY: "RETRY", IGNORE: "IGNORE", DELETE: "DELETE" }
+                    },
+                    // 자주 참조되는 enum — 미정의 접근(TypeError) 방지용 폴백.
+                    IllustratedMessageSize: { Base: "Base", Spot: "Spot", Dialog: "Dialog", Scene: "Scene", Auto: "Auto" },
+                    ValueState: { Error: "Error", Warning: "Warning", Success: "Success", Information: "Information", None: "None" },
+                    FlexAlignItems: {}, FlexJustifyContent: {}
+                }
+            };
+        })();
+    }
+
+    /************************************************************************
      * showCriticalErrorDialog 폴백 (구 ws_trycatch.js — 현재 미로드)
      *   미리보기 iframe(design/preview/index.js)이 parent.parent.showCriticalErrorDialog
      *   로 오류를 보고하는데, 메인 창에 정의가 없어 2차 TypeError 가 났음.
@@ -247,6 +314,10 @@
         } catch (e) { }
     };
     oAPP.common.fnShowFloatingFooterMsg = function (TYPE, POS, MSG) {
+
+        // 구 ws_common.js: 새 메시지 표시 전 이전 메시지/타이머 제거(잔상 방지).
+        oAPP.common.fnHideFloatingFooterMsg();
+
         // POS(WS10/WS20/WS30) 또는 현재 페이지로 대상 푸터 결정.
         var sPos = POS || (function () { try { return parent.getCurrPage(); } catch (e) { return "WS10"; } })() || "WS10";
         try {
@@ -259,6 +330,18 @@
                 oAPP.ws10html.showFooter(TYPE || "I", MSG || "");
             }
         } catch (e) { }
+
+        // 구 ws_common.js: 10초 뒤 자동 숨김(타임아웃). 변환 누락으로 푸터가 영구히
+        //   남아 이전 작업의 메시지가 다음 작업까지 보이던 회귀를 복원.
+        if (oAPP.attr.footerMsgTimeout) {
+            clearTimeout(oAPP.attr.footerMsgTimeout);
+            delete oAPP.attr.footerMsgTimeout;
+        }
+        oAPP.attr.footerMsgTimeout = setTimeout(function () {
+            oAPP.common.fnHideFloatingFooterMsg();
+            clearTimeout(oAPP.attr.footerMsgTimeout);
+            delete oAPP.attr.footerMsgTimeout;
+        }, 10000);
     };
     oAPP.common.fnHideFloatingFooterMsg = function () {
         try { APPCOMMON.fnSetModelProperty("/FMSG", { WS10: { ISSHOW: false }, WS20: { ISSHOW: false } }); } catch (e) { }
@@ -425,6 +508,123 @@
     };
 
     /************************************************************************
+     * [OVERRIDE] WS10 트랜잭션 — App 삭제 (구 oAPP.events.ev_AppDelete [ws_events.js])
+     * ---------------------------------------------------------------------
+     *  WS3.0 검증 이식. 원본은 sap.ui.getCore().byId("AppNmInput").getValue() +
+     *  parent.showMessage(sap, 30, 'W', …)(sap.m.MessageBox) 의존이라 UI5 제거 환경에서
+     *  ReferenceError. 입력 읽기는 DOM(getElementById)으로, 질문창은 셸의 fnConfirmBox
+     *  (showMessage KIND 30 대체)로 치환. 검증/존재확인/USP·일반 분기 흐름은 원본 그대로 보존.
+     *    · 입력 검증(필수 273 / 공백 274 / 특수문자 278)
+     *    · fnCheckAppExists → 없으면 007, 있으면 003 질문 → YES 시 APPTY 분기 삭제
+     *  [HTML5] 원본은 input 이 /WS10 모델 바인딩이라 fnSetAppDelete 가 모델 APPID 를 읽었으나,
+     *  HTML5 input 은 plain DOM 이므로 서버호출 전 /WS10/APPID 를 명시적으로 동기화한다.
+     ************************************************************************/
+    oAPP.events.ev_AppDelete = function () {
+
+        // busy 키고 Lock 걸기
+        oAPP.common.fnSetBusyLock("X");
+
+        // Trial Version Check
+        if (oAPP.fn.fnOnCheckIsTrial()) {
+            oAPP.common.fnSetBusyLock("");
+            return;
+        }
+
+        var oAppNmInput = document.getElementById("AppNmInput");
+        if (!oAppNmInput) {
+            oAPP.common.fnSetBusyLock("");
+            return;
+        }
+
+        var sValue = oAppNmInput.value,
+            sCurrPage = parent.getCurrPage(),
+            sLangu = (parent.process.USERINFO || {}).LANGU;
+
+        function lf_err(sMsg) {
+            APPCOMMON.fnShowFloatingFooterMsg("E", sCurrPage, sMsg);
+            oAPP.common.fnSetBusyLock("");
+        }
+
+        // 입력값 유무 확인
+        if (typeof sValue !== "string" || sValue == "") {
+            // 273 Application name is required.
+            lf_err(parent.WSUTIL.getWsMsgClsTxt(sLangu, "ZMSG_WS_COMMON_001", "273"));
+            return;
+        }
+
+        // 입력값 공백 여부 체크
+        if (/\s/.test(sValue)) {
+            // 274 The application name must not contain any spaces.
+            lf_err(parent.WSUTIL.getWsMsgClsTxt(sLangu, "ZMSG_WS_COMMON_001", "274"));
+            return;
+        }
+
+        // 특수문자 존재 여부 체크
+        if (/[^\w]/.test(sValue)) {
+            // 278 Special characters are not allowed.
+            lf_err(APPCOMMON.fnGetMsgClsText("/U4A/MSG_WS", "278"));
+            return;
+        }
+
+        // application 존재 여부 체크
+        var sAppID = oAppNmInput.value;
+        oAPP.fn.fnCheckAppExists(sAppID, lf_result);
+
+        function lf_result(RESULT) {
+
+            var oAppInfo = RESULT.RETURN,
+                oCurrWin = REMOTE.getCurrentWindow(),
+                sCurrPage = parent.getCurrPage();
+
+            if (RESULT.RETCD == "E") {
+
+                // 작업표시줄 깜빡임
+                oCurrWin.flashFrame(true);
+
+                // 007 Application ID &1 does not exist.
+                var sMsg = APPCOMMON.fnGetMsgClsText("/U4A/MSG_WS", "007", oAppInfo.APPID);
+                APPCOMMON.fnShowFloatingFooterMsg("E", sCurrPage, sMsg);
+
+                oAPP.common.fnSetBusyLock("");
+                return;
+            }
+
+            // busy 끄고 Lock 풀기
+            oAPP.common.fnSetBusyLock("");
+
+            // [HTML5] DOM input → 모델 동기화: 서버호출(fnSetAppDelete/fnSetUspAppDelete)이
+            //   /WS10 모델의 APPID 를 읽으므로, 검증된 APPID 를 모델에 반영한다.
+            APPCOMMON.fnSetModelProperty("/WS10/APPID", sAppID);
+
+            // 003 Do you really want to delete the object?
+            var sQMsg = APPCOMMON.fnGetMsgClsText("/U4A/MSG_WS", "003");
+
+            // 질문팝업 — 구: parent.showMessage(sap, 30, 'W', …) → 셸 fnConfirmBox(YES/NO)
+            oAPP.common.fnConfirmBox("W", sQMsg, function (TYPE) {
+
+                // busy 키고 Lock 걸기
+                oAPP.common.fnSetBusyLock("X");
+
+                if (TYPE == null || TYPE == "NO") {
+                    oAPP.common.fnSetBusyLock("");
+                    return;
+                }
+
+                // 삭제 어플리케이션이 USP 일 경우.
+                if (oAppInfo.APPTY == "U") {
+                    oAPP.fn.fnSetUspAppDelete();
+                    return;
+                }
+
+                // 어플리케이션 삭제하러 서버 호출
+                oAPP.fn.fnSetAppDelete();
+
+            });
+        }
+
+    }; // end of oAPP.events.ev_AppDelete
+
+    /************************************************************************
      * [OVERRIDE] Application Name 입력 체크 (구 oAPP.fn.fnCheckAppName [ws_fn_02.js])
      * ---------------------------------------------------------------------
      *  원본은 sap.ui.getCore().byId("AppNmInput").getValue() + fnCheckValidAppName
@@ -468,6 +668,52 @@
         }
 
         return true;
+    };
+
+    /************************************************************************
+     * [OVERRIDE] Application 명 정합성 체크 (구 oAPP.fn.fnCheckValidAppName [ws_fn_02.js])
+     * ---------------------------------------------------------------------
+     *  원본은 jQuery.sap.startsWith 의존 — UI5 제거 환경에선 jQuery.sap 가 없어 throw.
+     *  로직(필수/특수문자/길이/Z·Y 시작)은 그대로, startsWith → charAt 로만 치환.
+     *  Copy 팝업(fnAppCopyPopupOpen) OK 검증이 이 함수를 호출한다.
+     ************************************************************************/
+    oAPP.fn.fnCheckValidAppName = function (sAppID, bAppMaxLengthCheck) {
+
+        var oRetData = { RETCD: false, RETMSG: "" };
+        var sLangu = (parent.process.USERINFO || {}).LANGU;
+        var sValue = sAppID;
+
+        // 필수 입력.
+        if (typeof sValue !== "string" || sValue === "") {
+            // 273 Application name is required.
+            oRetData.RETMSG = parent.WSUTIL.getWsMsgClsTxt(sLangu, "ZMSG_WS_COMMON_001", "273");
+            return oRetData;
+        }
+
+        // 특수문자 불가(영숫자/언더스코어 외).
+        if (/[^\w]/.test(sValue)) {
+            // 278 Special characters are not allowed.
+            oRetData.RETMSG = APPCOMMON.fnGetMsgClsText("/U4A/MSG_WS", "278");
+            return oRetData;
+        }
+
+        // Create/Copy 시에만 길이 체크.
+        if (bAppMaxLengthCheck && sValue.length > oAPP.attr.iAppNameMaxLength) {
+            // 115 Application ID can only be 15 characters or less !!
+            oRetData.RETMSG = APPCOMMON.fnGetMsgClsText("/U4A/MSG_WS", "115");
+            return oRetData;
+        }
+
+        // Z 또는 Y 로 시작해야 함.
+        var sUp = sValue.toUpperCase();
+        if (sUp.charAt(0) !== "Z" && sUp.charAt(0) !== "Y") {
+            // 009 The application ID must start with Z or Y.
+            oRetData.RETMSG = APPCOMMON.fnGetMsgClsText("/U4A/MSG_WS", "009");
+            return oRetData;
+        }
+
+        oRetData.RETCD = true;
+        return oRetData;
     };
 
     /************************************************************************

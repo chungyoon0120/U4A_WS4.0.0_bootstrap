@@ -222,10 +222,12 @@ a:hover {
     background: var(--active-bg);
 }
 
-/* 버튼 포커스 테두리 제거 — 자동 포커스(예: 다이얼로그 OK)·클릭 시 "떨어진 박스"처럼 보이던
-   전역 :focus-visible outline 을 버튼에서만 없앤다. (입력/메뉴/스위치 등은 그대로 유지) */
-.u4a-btn:focus,
-.u4a-btn:focus-visible {
+/* 버튼 포커스 테두리 제거 — 자동 포커스(예: 다이얼로그 열릴 때 X 버튼)·클릭 시 "떨어진 박스"처럼
+   보이던 전역 :focus-visible outline 을 모든 <button> 에서 없앤다(전수 통일).
+   대상: 다이얼로그 X(.u4aCapX)·필드 clear/F4·WS20 아이콘버튼·툴바버튼 등 button 류 전부.
+   입력/메뉴(.u4a-menu__item)/스위치는 각자 자체 규칙(더 높은 specificity)으로 링을 유지한다. */
+button:focus,
+button:focus-visible {
     outline: none;
 }
 
@@ -290,6 +292,13 @@ a:hover {
 .u4a-btn-icon:hover {
     background: var(--hover-bg);
     color: var(--text);
+}
+
+/* 닫기/취소용 아이콘 버튼은 hover 시 의미색(빨강)으로 — close=dismiss 어포던스를 전 다이얼로그 통일.
+   (생성팝업 X·Change Layout X·Insert X 등 data-act=close|cancel 인 .u4a-btn-icon 전부) */
+.u4a-btn-icon[data-act="close"]:hover,
+.u4a-btn-icon[data-act="cancel"]:hover {
+    color: var(--state-error);
 }
 
 .u4a-btn-icon:active {
@@ -684,6 +693,31 @@ a:hover {
     box-shadow: var(--popover-shadow);
 }
 
+/* ★ 닫힌 다이얼로그는 반드시 숨긴다 — 위 display:flex(저자 스타일)가 브라우저 기본
+   dialog:not([open]){display:none} 을 덮어써서, .close() 후에도 보이던 버그 수정.
+   (재사용 패턴 팝업[App Copy 등]이 화면 전환 후 닫힌 채로 다시 떠 보이던 원인) */
+.u4a-dialog:not([open]) {
+    display: none;
+}
+
+/* ── 영역별 색 위계(조화) — 모든 .u4a-dialog 공통(폼/메시지박스 통일, 하드코딩 색 없이 토큰만).
+      올라온 chrome(헤더/푸터) ▸ 들어간 content well(바디) ▸ 떠오르는 필드.
+      (상단 accent 띠는 과해서 제외 — 깊이감만으로 영역 구분)
+      color-mix 미지원 시 헤더/푸터는 기본 surface-raised 로 폴백(레이아웃 영향 없음). ── */
+.u4a-dialog__header,
+.u4a-dialog__footer {
+    background: color-mix(in srgb, var(--surface-raised) 91%, var(--text) 9%);
+}
+.u4a-dialog__body {
+    background: var(--surface);
+}
+.u4a-dialog .u4a-input,
+.u4a-dialog .u4a-combo,
+.u4a-dialog .u4a-select {
+    background: var(--surface-raised);
+    border-color: var(--divider);
+}
+
 .u4a-dialog__header,
 .u4a-dialog__footer {
     flex: 0 0 auto;
@@ -695,30 +729,34 @@ a:hover {
     gap: 0.5rem;
     padding: 0.625rem 1rem;
     border-bottom: 0.0625rem solid var(--divider);
+    /* 제목은 본문(0.875rem)보다 키워 헤더 두께와 균형 — 다이얼로그 타이틀다운 크기 */
+    font-size: 1.0625rem;
     font-weight: 700;
 }
 
-.u4a-dialog__header i {
+/* 헤더의 "선두 상태 아이콘"만 대상(> i, 직계). 헤더 안의 닫기 X·액션 버튼 속 아이콘(button > i)은
+   제외해야 한다 — 안 그러면 data-type 의미색이 X 버튼까지 파랗게 칠해버린다(close 의미 불일치). */
+.u4a-dialog__header > i {
     font-size: 1rem;
     color: var(--icon-muted);
 }
 
 /* fnConfirmBox/메시지박스가 .u4a-dialog__header 에 data-type(S/E/W/I/C) 을 세팅한다.
-   서버리스트 fnShowMessageBox 와 동일하게 타입 의미색만 아이콘에 입혀 디자인 통일. */
-.u4a-dialog__header[data-type="E"] i {
+   서버리스트 fnShowMessageBox 와 동일하게 타입 의미색만 선두 아이콘에 입혀 디자인 통일. */
+.u4a-dialog__header[data-type="E"] > i {
     color: var(--state-error);
 }
 
-.u4a-dialog__header[data-type="W"] i {
+.u4a-dialog__header[data-type="W"] > i {
     color: var(--state-warning);
 }
 
-.u4a-dialog__header[data-type="S"] i {
+.u4a-dialog__header[data-type="S"] > i {
     color: var(--state-success);
 }
 
-.u4a-dialog__header[data-type="I"] i,
-.u4a-dialog__header[data-type="C"] i {
+.u4a-dialog__header[data-type="I"] > i,
+.u4a-dialog__header[data-type="C"] > i {
     color: var(--accent);
 }
 
@@ -736,6 +774,25 @@ a:hover {
     padding: 0.75rem 1rem;
     border-top: 0.0625rem solid var(--divider);
 }
+
+/* 리사이즈 그립(우하단) — U4AUI.makeDialogResizable 이 푸터 우하단 패딩 영역에 삽입.
+   대각선 그립으로 "크기 조절 가능"을 사용자에게 표시. 푸터 우측 패딩(1rem) 안쪽이라
+   닫기 버튼과 겹치지 않는다. */
+.u4a-dialog__resize {
+    position: absolute;
+    right: 0.125rem;
+    bottom: 0.125rem;
+    width: 1rem;
+    height: 1rem;
+    cursor: nwse-resize;
+    opacity: 0.75;
+    /* UI5 sapMDialogResizeHandle 느낌 — 우하단 코너 3선 그립(증가 길이). 각 줄 = 1개 대각선 밴드. */
+    background:
+        linear-gradient(135deg, transparent 44%, var(--text-muted) 44% 52%, transparent 52%),
+        linear-gradient(135deg, transparent 64%, var(--text-muted) 64% 72%, transparent 72%),
+        linear-gradient(135deg, transparent 84%, var(--text-muted) 84% 92%, transparent 92%);
+}
+.u4a-dialog__resize:hover { opacity: 1; }
 
 .u4a-dialog__body--flush {
     padding: 0;
@@ -825,6 +882,23 @@ a:hover {
     background: var(--disabled-bg);
     color: var(--disabled-text);
     opacity: var(--disabled-opacity);
+}
+
+/* 읽기 전용(자동 채움) 필드 — 편집 가능 필드(올라온 surface-raised)와 한눈에 구분되게
+   '한 단계 들어간/잠긴' 톤(disabled-bg) + muted 글자 + hover 하이라이트·포커스 링 없음 + 기본 커서.
+   "올라온 박스=입력 / 들어간 박스=잠김" 으로 편집여부를 시각 구분한다.
+   ★ .u4a-input 과 함께(0,2,0)+ 써서 다이얼로그 필드 위계 규칙(.u4a-dialog .u4a-input)에
+   평상시/hover 모두 지지 않게 한다(안 그러면 평상시 박스 → hover 시 깜빡이며 "사라지는" 버그).
+   사용처: 생성팝업 Request Desc / App Copy 원본명. */
+.u4a-input.u4a-input--display,
+.u4a-input.u4a-input--display:hover,
+.u4a-input.u4a-input--display:focus-visible {
+    background: var(--disabled-bg);
+    border-color: var(--line);
+    color: var(--text-muted);
+    cursor: default;
+    outline: none;
+    box-shadow: none;
 }
 
 /* ValueState.Error (체크리스트 F) */

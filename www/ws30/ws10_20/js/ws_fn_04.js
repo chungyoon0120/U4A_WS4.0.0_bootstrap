@@ -561,12 +561,14 @@
             // 이전에 돌고 있는 인터벌이 혹시나 있으면 삭제
             _clearIntervalSapGuiCheck();
 
-            let sIllustDesc = "",
-                oIllustMsg = sap.ui.getCore().byId("u4aWsIllustedMsg");
-
-            if (oIllustMsg) {
-                sIllustDesc = oIllustMsg.getDescription();
-            }
+            // [HTML5] 구 sap.ui.getCore().byId("u4aWsIllustedMsg").getDescription()
+            //   → 네이티브 진행 다이얼로그(.u4aWsIllustDesc)의 현재 설명을 읽어 카운트다운에 이어붙임.
+            let oIllustDescEl = (function () {
+                    var d = document.getElementById("u4aWsIllustedMsgDialog");
+                    return d ? d.querySelector(".u4aWsIllustDesc") : null;
+                })(),
+                oIllustMsg = oIllustDescEl,                       // 존재 여부 플래그(아래 interval 가드 호환)
+                sIllustDesc = oIllustDescEl ? (oIllustDescEl.textContent || "") : "";
 
             let iMaxTime = 30,
                 iCurrTime = 0;

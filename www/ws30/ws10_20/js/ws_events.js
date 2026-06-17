@@ -278,8 +278,18 @@
         sendAjax(sPath, oFormData, function (oResult) {
 
             // 스크립트가 있으면 eval 처리
+            //   [HTML5] 서버 SCRIPT 는 UI5 의존 코드(parent.showMessage(sap, …) / sap.* 등)를
+            //   담아 내려올 수 있다 — 특히 "다른 창에서 change 모드로 열려 lock 된 앱"을 삭제하면
+            //   서버가 lock 오류 스크립트(sap 참조)를 보낸다. sap 전역이 없어 ReferenceError →
+            //   window.onerror(ws_trycatch) → APP.exit() 로 앱이 강제종료되고 busy 도 멈춘 채
+            //   남던 회귀를, eval 을 try/catch 로 감싸 차단(앱 유지 + 아래 busy 해제 보장).
+            //   eval 은 lf_appDelCtsPopup 등 로컬 헬퍼를 서버 스크립트가 호출할 수 있어 동일 스코프 유지.
             if (oResult.SCRIPT) {
-                eval(oResult.SCRIPT);
+                try {
+                    eval(oResult.SCRIPT);
+                } catch (e) {
+                    console.error("[HTML5] /app_delte SCRIPT eval 실패 (UI5 의존 추정):", e && e.message, oResult.SCRIPT);
+                }
             }
 
             if (oResult.RETCD == "E") {
@@ -292,8 +302,13 @@
                 // 작업표시줄 깜빡임
                 oCurrWin.flashFrame(true);
 
-                // 화면 Lock 해제
-                sap.ui.getCore().unlock();
+                // 화면 Lock 해제 ([HTML5] sap 미정의 — 가드)
+                if (typeof sap !== "undefined" && sap.ui && sap.ui.getCore) { sap.ui.getCore().unlock(); }
+
+                // [HTML5] 구 SCRIPT(showMessage) 가 sap 의존이라 못 떠도, 서버가 준 오류 메시지를
+                //   푸터로 노출해 사용자에게 원인(lock 등)을 알린다. 메시지 없으면 사운드/깜빡임만.
+                var sErrMsg = oResult.RETMSG || oResult.RTMSG || oResult.MESSAGE || "";
+                if (sErrMsg) { APPCOMMON.fnShowFloatingFooterMsg("E", parent.getCurrPage(), sErrMsg); }
 
                 parent.setBusy("");
 
@@ -348,8 +363,15 @@
         sendAjax(sPath, oFormData, function (oResult) {
 
             // 스크립트가 있으면 eval 처리
+            //   [HTML5] /app_delte 와 동일 — 서버 SCRIPT 의 UI5(sap) 의존으로 인한
+            //   window.onerror → APP.exit() 회귀를 try/catch 로 차단. (lf_appDelCtsPopup 등
+            //   로컬 헬퍼 호출 가능성 때문에 eval 은 동일 스코프 유지)
             if (oResult.SCRIPT) {
-                eval(oResult.SCRIPT);
+                try {
+                    eval(oResult.SCRIPT);
+                } catch (e) {
+                    console.error("[HTML5] /usp_app_delete SCRIPT eval 실패 (UI5 의존 추정):", e && e.message, oResult.SCRIPT);
+                }
             }
 
             // 오류 일 경우.
@@ -359,6 +381,10 @@
 
                 // 작업표시줄 깜빡임
                 CURRWIN.flashFrame(true);
+
+                // [HTML5] 구 SCRIPT(showMessage) 가 못 떠도 서버 오류 메시지를 푸터로 노출.
+                var sErrMsg = oResult.RETMSG || oResult.RTMSG || oResult.MESSAGE || "";
+                if (sErrMsg) { APPCOMMON.fnShowFloatingFooterMsg("E", parent.getCurrPage(), sErrMsg); }
 
                 // busy 끄고 Lock 풀기
                 oAPP.common.fnSetBusyLock("");

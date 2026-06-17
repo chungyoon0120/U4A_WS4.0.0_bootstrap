@@ -326,7 +326,12 @@
                         var _oFiltBtn = document.getElementById("ws20AttrShowChangedBtn");
                         if (_oFiltBtn) {
                             _oFiltBtn.classList.remove("pressed");
-                            if (_sFilt && _sFilt.text) { _oFiltBtn.textContent = _sFilt.text; }
+                            // ★ 버튼 자체 textContent 세팅은 자식 <i>(필터 아이콘)까지 지운다 →
+                            //   반드시 내부 <span> 텍스트만 갱신(아이콘 보존). 아이콘 클래스도 기본값으로 복원.
+                            var _oFltTxt = _oFiltBtn.querySelector("span");
+                            if (_oFltTxt && _sFilt && _sFilt.text) { _oFltTxt.textContent = _sFilt.text; }
+                            var _oFltIco = _oFiltBtn.querySelector("i");
+                            if (_oFltIco) { _oFltIco.className = "fa-solid fa-filter"; }
                         }
                     } catch (e) { }
 
