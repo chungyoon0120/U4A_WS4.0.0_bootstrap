@@ -484,7 +484,8 @@
         };
 
         // URL에 QueryString 파라미터를 적용한다.
-        let sLoadUrl = WSUTIL.QueryString.build(PATHINFO.SERVERLIST_v2, oQueryParams);
+        // Bootstrap 5.0.2 기반 재구성 서버리스트 화면 사용 (구버전: SERVERLIST_v2)
+        let sLoadUrl = WSUTIL.QueryString.build(PATHINFO.SERVERLIST_BS, oQueryParams);
 
         oBrowserWindow.loadURL(sLoadUrl);
 

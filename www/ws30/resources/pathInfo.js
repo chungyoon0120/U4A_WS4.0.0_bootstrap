@@ -54,6 +54,7 @@ module.exports = (() => {
         WSSETTINGS: PATH.join(CONF_ROOT, "ws_settings.json"),
         SERVERLIST: PATH.join(APPPATH, '/ServerList/ServerFrame.html'),
         SERVERLIST_v2: PATH.join(APPPATH, '/ServerList_v2/ServerList.html'),
+        SERVERLIST_BS: PATH.join(APPPATH, '/lib/bootstrap/ServerList/ServerList.html'),  // Bootstrap 기반 재구성
         COMMONCSS: PATH.join(APPPATH, "css", "common.css"),
         AUTOUPDSAP: PATH.join(APPPATH, "lib", "ws", "electron-updater-sap.js"),
         WS_SP_UPD: PATH.join(APPPATH, "lib", "ws", "SupportPackageChecker", "index.js"),
